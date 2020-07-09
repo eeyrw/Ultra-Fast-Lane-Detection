@@ -11,6 +11,25 @@ import numpy as np
 import torchvision.transforms as transforms
 from PIL import Image
 
+
+def resizeAndCropToTargetSize(img, width, height):
+    rawW, rawH = img.size
+    rawAspectRatio = rawW/rawH
+    wantedAspectRatio = width/height
+    if rawAspectRatio > wantedAspectRatio:
+        scaleFactor = height/rawH
+        widthBeforeCrop = int(rawW*scaleFactor)
+        return img.resize((widthBeforeCrop, height), Image.BILINEAR). \
+            crop(((widthBeforeCrop-width)//2, 0,
+                  (widthBeforeCrop-width)//2+width, height))
+    else:
+        scaleFactor = width/rawW
+        heightBeforeCrop = int(rawH*scaleFactor)
+        return img.resize((width, heightBeforeCrop), Image.BILINEAR). \
+            crop((0, (heightBeforeCrop-height)//2, width,
+                  (heightBeforeCrop-height)//2+height))
+
+
 if __name__ == "__main__":
 
     # reference maskrcnn-benchmark
@@ -48,12 +67,12 @@ if __name__ == "__main__":
     net.eval()
 
     img_transforms = transforms.Compose([
-        transforms.Resize((288, 800)),
+        # transforms.Resize((288, 800)),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
-    videFilePath = ''
+    videFilePath = 'rain.mp4'
     writeToVideo = False
 
     cap = cv2.VideoCapture(videFilePath)
@@ -68,9 +87,12 @@ if __name__ == "__main__":
         if frame is None:
             break
 
-        imageRgb = img_transforms(
-            Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
-        imgs = torch.unsqueeze(imageRgb, 0).to(device)
+        imageRgb = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        imageRgb = resizeAndCropToTargetSize(imageRgb, 1640, 590)
+        imageBgrCV = cv2.cvtColor(np.asarray(imageRgb), cv2.COLOR_RGB2BGR)
+        imageRgb = resizeAndCropToTargetSize(imageRgb, 800, 288)
+        imageTensor = img_transforms(imageRgb)
+        imgs = torch.unsqueeze(imageTensor, 0).to(device)
         with torch.no_grad():
             out = net(imgs)
 
@@ -93,9 +115,10 @@ if __name__ == "__main__":
                     if out_j[k, i] > 0:
                         ppp = (int(out_j[k, i] * col_sample_w *
                                    1640 / 800) - 1, int(590 - k * 20) - 1)
-                        cv2.circle(frame, ppp, 5, (0, 255, 0), -1)
+                        cv2.circle(imageBgrCV, ppp, 5, (0, 255, 0), -1)
         if writeToVideo:
-            vout.write(frame)
+            vout.write(imageBgrCV)
+        cv2.imshow('L', imageBgrCV)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

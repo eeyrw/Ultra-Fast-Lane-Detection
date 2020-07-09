@@ -2,6 +2,7 @@ import json
 import os.path as osp
 import shutil
 import sys
+import os
 import tempfile
 from argparse import Action, ArgumentParser
 from collections import abc
@@ -97,6 +98,7 @@ class Config(object):
                 del sys.modules[temp_module_name]
                 # close temp file
                 temp_config_file.close()
+                os.unlink(temp_config_file.name)
         elif filename.endswith(('.yml', '.yaml', '.json')):
             import mmcv
             cfg_dict = mmcv.load(filename)
