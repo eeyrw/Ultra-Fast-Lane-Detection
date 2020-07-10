@@ -35,16 +35,22 @@ def draw(im,line,idx,show = False):
     for i in range(len(line_x)-1):
         cv2.line(im,pt0,(int(line_x[i+1]),int(line_y[i+1])),(idx,),thickness = 16)
         pt0 = (int(line_x[i+1]),int(line_y[i+1]))
-def get_tusimple_list(root, label_list):
+def get_tusimple_list(root, label_list,extraSubDir=None):
     '''
     Get all the files' names from the json annotation
     '''
     label_json_all = []
     for l in label_list:
-        l = os.path.join(root,l)
+        if not extraSubDir:
+            l = os.path.join(root,l)
+        else:
+             l = os.path.join(root,extraSubDir,l)           
         label_json = [json.loads(line) for line in open(l).readlines()]
         label_json_all += label_json
-    names = [l['raw_file'] for l in label_json_all]
+    if not extraSubDir:
+        names = [l['raw_file'] for l in label_json_all]
+    else:
+        names = [os.path.join(extraSubDir,l['raw_file']) for l in label_json_all]
     h_samples = [np.array(l['h_samples']) for l in label_json_all]
     lanes = [np.array(l['lanes']) for l in label_json_all]
 
@@ -142,14 +148,13 @@ if __name__ == "__main__":
     args = get_args().parse_args()
 
     # training set
-    names,line_txt = get_tusimple_list(args.root,  ['label_data_0601.json','label_data_0531.json','label_data_0313.json'])
+    names,line_txt = get_tusimple_list(args.root,  ['label_data_0601.json','label_data_0531.json','label_data_0313.json'],extraSubDir='train_set')
     # generate segmentation and training list for training
     generate_segmentation_and_train_list(args.root, line_txt, names)
 
     # testing set
-    names,line_txt = get_tusimple_list(args.root, ['test_tasks_0627.json'])
+    names,line_txt = get_tusimple_list(args.root, ['test_tasks_0627.json'],extraSubDir='test_set')
     # generate testing set for testing
     with open(os.path.join(args.root,'test.txt'),'w') as fp:
         for name in names:
             fp.write(name + '\n')
-
