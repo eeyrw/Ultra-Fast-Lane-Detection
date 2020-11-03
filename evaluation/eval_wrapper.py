@@ -131,6 +131,7 @@ def combine_tusimple_test(work_dir,exp_name):
 
 def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distributed):
     net.eval()
+    metricsDict = {}
     if dataset == 'CULane':
         run_test(net,data_root, 'culane_eval_tmp', work_dir, griding_num, use_aux, distributed)
         synchronize()   # wait for all results
@@ -144,9 +145,11 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
                 FP += val_fp
                 FN += val_fn
                 dist_print(k,val)
+                metricsDict[k]=val
             P = TP * 1.0/(TP + FP)
             R = TP * 1.0/(TP + FN)
             F = 2*P*R/(P + R)
+            metricsDict['F1measure']=F
             dist_print(F)
         synchronize()
 
@@ -160,7 +163,10 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
             res = json.loads(res)
             for r in res:
                 dist_print(r['name'], r['value'])
+                metricsDict[r['name']]=r['value']
         synchronize()
+    
+    return metricsDict
 
 
 def read_helper(path):
