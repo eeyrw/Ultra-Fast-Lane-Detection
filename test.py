@@ -15,7 +15,7 @@ if __name__ == "__main__":
         cls_num_per_lane = 56
     else:
         raise NotImplementedError
-    
+
     net = parsingNet(pretrained = False, backbone=cfg.backbone,cls_dim = (cfg.griding_num+1,cls_num_per_lane, cfg.num_lanes),
                     use_aux=False).cuda() # we dont need auxiliary segmentation in testing
 
@@ -29,4 +29,4 @@ if __name__ == "__main__":
 
     net.load_state_dict(compatible_state_dict, strict = False)
 
-    print(testNet(net,args,cfg))
+    print(testNet(net,args,cfg,False))

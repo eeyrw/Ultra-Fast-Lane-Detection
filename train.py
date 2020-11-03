@@ -11,6 +11,8 @@ from utils.metrics import MultiLabelAcc, AccTopk, Metric_mIoU, update_metrics, r
 from utils.common import merge_config, save_model, cp_projects
 from utils.common import get_work_dir, get_logger
 
+from test_wrapper import testNet
+
 import time
 
 
@@ -149,6 +151,10 @@ if __name__ == "__main__":
     for epoch in range(resume_epoch, cfg.epoch):
 
         train(net, train_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_aux)
-        
+        if cfg.test_during_train and (epoch % cfg.test_interval == 0):
+            metricsDict=testNet(net,args,cfg,True)
+            stepAfterEpoch = (epoch+1) * len(train_loader)
+            for metricName,metricValue in metricsDict.items():
+                logger.add_scalar('test/'+metricName,metricValue, global_step=stepAfterEpoch)        
         save_model(net, optimizer, epoch ,work_dir, distributed)
     logger.close()

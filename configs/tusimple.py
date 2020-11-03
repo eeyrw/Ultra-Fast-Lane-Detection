@@ -40,3 +40,5 @@ test_model = None
 test_work_dir = None
 
 num_lanes = 4
+test_interval = 1
+test_during_train = True
