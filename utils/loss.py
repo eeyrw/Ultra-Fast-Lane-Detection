@@ -34,7 +34,7 @@ class SoftmaxFocalLoss(nn.Module):
         factor = torch.pow(1.-scores, self.gamma)
         log_score = F.log_softmax(logits, dim=1)
         log_score = factor * log_score
-        loss = self.nll(log_score, labels)
+        loss = self.nll(log_score, labels.long())
         return loss
 
 class ParsingRelationLoss(nn.Module):
