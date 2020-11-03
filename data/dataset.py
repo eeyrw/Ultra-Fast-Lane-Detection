@@ -37,7 +37,7 @@ class LaneTestDataset(torch.utils.data.Dataset):
 
 class LaneClsDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform = None,target_transform = None,simu_transform = None, griding_num=50, load_name = False,
-                row_anchor = None,use_aux=False,segment_transform=None):
+                row_anchor = None,use_aux=False,segment_transform=None, num_lanes = 4):
         super(LaneClsDataset, self).__init__()
         self.img_transform = img_transform
         self.target_transform = target_transform
@@ -47,6 +47,7 @@ class LaneClsDataset(torch.utils.data.Dataset):
         self.griding_num = griding_num
         self.load_name = load_name
         self.use_aux = use_aux
+        self.num_lanes = num_lanes
 
         with open(list_path, 'r') as f:
             self.list = f.readlines()
@@ -72,11 +73,13 @@ class LaneClsDataset(torch.utils.data.Dataset):
         if self.simu_transform is not None:
             img, label = self.simu_transform(img, label)
         lane_pts = self._get_index(label)
+        # get the coordinates of lanes at row anchors
 
 
 
         w, h = img.size
         cls_label = self._grid_pts(lane_pts, self.griding_num, w)
+        # make the coordinates to classification label
         if self.use_aux:
             assert self.segment_transform is not None
             seg_label = self.segment_transform(label)
@@ -113,10 +116,10 @@ class LaneClsDataset(torch.utils.data.Dataset):
             scale_f = lambda x : int((x * 1.0/288) * h)
             sample_tmp = list(map(scale_f,self.row_anchor))
 
-        all_idx = np.zeros((4,len(sample_tmp),2))
+        all_idx = np.zeros((self.num_lanes,len(sample_tmp),2))
         for i,r in enumerate(sample_tmp):
             label_r = np.asarray(label)[int(round(r))]
-            for lane_idx in range(1, 5):
+            for lane_idx in range(1, self.num_lanes + 1):
                 pos = np.where(label_r == lane_idx)[0]
                 if len(pos) == 0:
                     all_idx[lane_idx - 1, i, 0] = r
@@ -126,17 +129,26 @@ class LaneClsDataset(torch.utils.data.Dataset):
                 all_idx[lane_idx - 1, i, 0] = r
                 all_idx[lane_idx - 1, i, 1] = pos
 
+        # data augmentation: extend the lane to the boundary of image
+
         all_idx_cp = all_idx.copy()
-        for i in range(4):
+        for i in range(self.num_lanes):
             if np.all(all_idx_cp[i,:,1] == -1):
                 continue
+            # if there is no lane
 
             valid = all_idx_cp[i,:,1] != -1
+            # get all valid lane points' index
             valid_idx = all_idx_cp[i,valid,:]
+            # get all valid lane points
             if valid_idx[-1,0] == all_idx_cp[0,-1,0]:
+                # if the last valid lane point's y-coordinate is already the last y-coordinate of all rows
+                # this means this lane has reached the bottom boundary of the image
+                # so we skip
                 continue
             if len(valid_idx) < 6:
                 continue
+            # if the lane is too short to extend
 
             valid_idx_half = valid_idx[len(valid_idx) // 2:,:]
             p = np.polyfit(valid_idx_half[:,0], valid_idx_half[:,1],deg = 1)

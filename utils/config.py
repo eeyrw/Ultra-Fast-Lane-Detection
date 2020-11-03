@@ -2,7 +2,6 @@ import json
 import os.path as osp
 import shutil
 import sys
-import os
 import tempfile
 from argparse import Action, ArgumentParser
 from collections import abc
@@ -81,8 +80,10 @@ class Config(object):
         if filename.endswith('.py'):
             with tempfile.TemporaryDirectory() as temp_config_dir:
                 temp_config_file = tempfile.NamedTemporaryFile(
-                    dir=temp_config_dir, suffix='.py',delete=False)
+                    dir=temp_config_dir, suffix='.py')
                 temp_config_name = osp.basename(temp_config_file.name)
+                # close temp file
+                temp_config_file.close()
                 shutil.copyfile(filename,
                                 osp.join(temp_config_dir, temp_config_name))
                 temp_module_name = osp.splitext(temp_config_name)[0]
@@ -96,9 +97,7 @@ class Config(object):
                 }
                 # delete imported module
                 del sys.modules[temp_module_name]
-                # close temp file
-                temp_config_file.close()
-                os.unlink(temp_config_file.name)
+
         elif filename.endswith(('.yml', '.yaml', '.json')):
             import mmcv
             cfg_dict = mmcv.load(filename)
