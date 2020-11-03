@@ -43,6 +43,15 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distr
                                            griding_num=griding_num, 
                                            row_anchor = tusimple_row_anchor,
                                            segment_transform=segment_transform,use_aux=use_aux, num_lanes = num_lanes)
+        cls_num_per_lane = 56                                           
+    elif dataset == 'Tusimple-semi-supervision':
+        train_dataset = LaneClsDataset(data_root,
+                                           os.path.join(data_root, 'train_semi_supervision_gt.txt'),
+                                           img_transform=img_transform, target_transform=target_transform,
+                                           simu_transform = simu_transform,
+                                           griding_num=griding_num, 
+                                           row_anchor = tusimple_row_anchor,
+                                           segment_transform=segment_transform,use_aux=use_aux, num_lanes = num_lanes)
         cls_num_per_lane = 56
     else:
         raise NotImplementedError
