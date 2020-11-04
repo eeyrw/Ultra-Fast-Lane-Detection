@@ -2,6 +2,7 @@ import os, argparse
 from utils.dist_utils import is_main_process, dist_print, DistSummaryWriter
 from utils.config import Config
 import torch
+from shutil import copyfile
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -98,7 +99,9 @@ def cp_projects(to_path):
             dirs = os.path.join(to_path,'code',os.path.split(f[2:])[0])
             if not os.path.exists(dirs):
                 os.makedirs(dirs)
-            os.system('cp %s %s'%(f,os.path.join(to_path,'code',f[2:])))
+            # os.system('cp %s %s'%(f,os.path.join(to_path,'code',f[2:])))
+            copyfile(f, os.path.join(to_path,'code',f[2:]))
+
 
 
 import datetime, os
