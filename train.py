@@ -161,6 +161,6 @@ if __name__ == "__main__":
             if isBetter:
                 bestMetrics = metricsDict
                 save_best_model(net, optimizer ,work_dir, distributed)
-                dist_print('Save best model: epoch %d',epoch)     
+                dist_print('Save best model: epoch %d'%epoch)     
         save_model(net, optimizer, epoch ,work_dir, distributed)
     logger.close()
