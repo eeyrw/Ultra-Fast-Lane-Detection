@@ -77,9 +77,9 @@ class parsingNet(torch.nn.Module):
         if self.use_aux:
             x2 = self.aux_header2(x2)
             x3 = self.aux_header3(x3)
-            x3 = torch.nn.functional.interpolate(x3,scale_factor = 2,mode='bilinear')
+            x3 = torch.nn.functional.interpolate(x3,scale_factor = 2,mode='bilinear',align_corners=True)
             x4 = self.aux_header4(fea)
-            x4 = torch.nn.functional.interpolate(x4,scale_factor = 4,mode='bilinear')
+            x4 = torch.nn.functional.interpolate(x4,scale_factor = 4,mode='bilinear',align_corners=True)
             aux_seg = torch.cat([x2,x3,x4],dim=1)
             aux_seg = self.aux_combine(aux_seg)
         else:
