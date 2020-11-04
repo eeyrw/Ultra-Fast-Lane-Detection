@@ -71,6 +71,15 @@ def save_model(net, optimizer, epoch,save_path, distributed):
         model_path = os.path.join(save_path, 'ep%03d.pth' % epoch)
         torch.save(state, model_path)
 
+def save_best_model(net, optimizer,save_path, distributed):
+    if is_main_process():
+        model_state_dict = net.state_dict()
+        state = {'model': model_state_dict, 'optimizer': optimizer.state_dict()}
+        # state = {'model': model_state_dict}
+        assert os.path.exists(save_path)
+        model_path = os.path.join(save_path, 'best.pth')
+        torch.save(state, model_path)        
+
 import pathspec
 
 def cp_projects(to_path):

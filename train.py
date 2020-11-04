@@ -8,7 +8,7 @@ from utils.dist_utils import dist_print, dist_tqdm, is_main_process, DistSummary
 from utils.factory import get_metric_dict, get_loss_dict, get_optimizer, get_scheduler
 from utils.metrics import MultiLabelAcc, AccTopk, Metric_mIoU, update_metrics, reset_metrics
 
-from utils.common import merge_config, save_model, cp_projects
+from utils.common import merge_config, save_model, save_best_model, cp_projects
 from utils.common import get_work_dir, get_logger
 
 from test_wrapper import testNet
@@ -148,13 +148,19 @@ if __name__ == "__main__":
     logger = get_logger(work_dir, cfg)
     cp_projects(work_dir)
 
+    bestMetrics = None
+
     for epoch in range(resume_epoch, cfg.epoch):
 
         train(net, train_loader, loss_dict, optimizer, scheduler,logger, epoch, metric_dict, cfg.use_aux)
         if cfg.test_during_train and (epoch % cfg.test_interval == 0):
-            metricsDict=testNet(net,args,cfg,True)
+            metricsDict,isBetter=testNet(net,args,cfg,True,lastMetrics=bestMetrics)
             stepAfterEpoch = (epoch+1) * len(train_loader)
             for metricName,metricValue in metricsDict.items():
-                logger.add_scalar('test/'+metricName,metricValue, global_step=stepAfterEpoch)        
+                logger.add_scalar('test/'+metricName,metricValue, global_step=stepAfterEpoch)  
+            if isBetter:
+                bestMetrics = metricsDict
+                save_best_model(net, optimizer ,work_dir, distributed)
+                dist_print('Save best model: epoch %d',epoch)     
         save_model(net, optimizer, epoch ,work_dir, distributed)
     logger.close()

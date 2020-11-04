@@ -129,9 +129,10 @@ def combine_tusimple_test(work_dir,exp_name):
         fp.writelines(all_res_no_dup)
     
 
-def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distributed):
+def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distributed,lastMetrics=None):
     net.eval()
     metricsDict = {}
+    isBetter = True
     if dataset == 'CULane':
         run_test(net,data_root, 'culane_eval_tmp', work_dir, griding_num, use_aux, distributed)
         synchronize()   # wait for all results
@@ -150,6 +151,11 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
             R = TP * 1.0/(TP + FN)
             F = 2*P*R/(P + R)
             metricsDict['F1measure']=F
+            if lastMetrics is not None and 'F1measure' in lastMetrics.keys():
+                if metricsDict['F1measure']>lastMetrics['F1measure']:
+                    isBetter = True
+                else:
+                    isBetter = False
             dist_print(F)
         synchronize()
 
@@ -164,9 +170,15 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
             for r in res:
                 dist_print(r['name'], r['value'])
                 metricsDict[r['name']]=r['value']
+
+            if lastMetrics is not None and 'Accuracy' in lastMetrics.keys():
+                if metricsDict['Accuracy']>lastMetrics['Accuracy']:
+                    isBetter = True
+                else:
+                    isBetter = False
         synchronize()
     
-    return metricsDict
+    return metricsDict,isBetter
 
 
 def read_helper(path):

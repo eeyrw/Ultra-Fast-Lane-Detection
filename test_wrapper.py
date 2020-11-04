@@ -5,7 +5,7 @@ from utils.dist_utils import dist_print
 from evaluation.eval_wrapper import eval_lane
 import torch
 
-def testNet(net,args,cfg,testWithAux):
+def testNet(net,args,cfg,testWithAux,lastMetrics=None):
     torch.backends.cudnn.benchmark = True
 
     distributed = False
@@ -25,4 +25,4 @@ def testNet(net,args,cfg,testWithAux):
     if not os.path.exists(cfg.test_work_dir):
         os.mkdir(cfg.test_work_dir)
 
-    return eval_lane(net, cfg.dataset, cfg.data_root, cfg.test_work_dir, cfg.griding_num, testWithAux, distributed)
+    return eval_lane(net, cfg.dataset, cfg.data_root, cfg.test_work_dir, cfg.griding_num, testWithAux, distributed,lastMetrics=lastMetrics)
