@@ -64,4 +64,4 @@ def visualizeImageAndLabel(self, writer, tag, step, image, label, output):
 
 
 if __name__ == "__main__":
-    genSegLabelImage(torch.rand(5,6,7),(110,98),"a.png")
+    genSegLabelImage(torch.randn(5,36,100),(800,1280),"a.png")
