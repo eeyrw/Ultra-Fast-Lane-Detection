@@ -19,17 +19,55 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.gridspec as gridspec
 import matplotlib
+lane_index_colour =[(0, 0, 0),(192, 57, 43),(41, 128, 185),(22, 160, 133),(243, 156, 18)]
 
 
-def genSegLabelImage(segOutput,size,path):
+
+def genSegLabelImage(image,segOutput,size,path,use_color=False):
     # segOutput: [class,h,w]
     segOutput = torch.unsqueeze(torch.unsqueeze(torch.argmax(torch.sigmoid(segOutput),dim=0), 0), 0)
     # segOutput: [1,1,h,w]
-    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(segOutput.float(),size=size)).byte()
-    print(plainSegOutput)
-    labelImage = Image.fromarray(plainSegOutput.cpu().numpy())
-    labelImage.save(path)
+    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(segOutput.float(),size=size)).byte().cpu().numpy()
+
+    image = torch.unsqueeze(image,dim=0)
+    image = torch.squeeze(torch.nn.functional.interpolate(image.float(),size=size))
+
+    if use_color:
+        img_bgr = normalizeImage(image).transpose((1, 2, 0))[...,::-1] # Step 1. chw to hwc Step 2. RGB to BGR
+        colorMapMat = np.array(lane_index_colour,dtype=np.uint8)[...,::-1] # RGB to BGR
+        segImage = colorMapMat[plainSegOutput]
+        res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)
+        cv2.imwrite(path,res)
+    else:
+        cv2.imwrite(path,plainSegOutput)
+        # labelImage = Image.fromarray(plainSegOutput)
+        # labelImage.save(path)
+
+
+def logSegLabelImage(logger,tag,step,image,segOutput,size):
+    # segOutput: [class,h,w]
+    segOutput = torch.unsqueeze(torch.unsqueeze(torch.argmax(torch.sigmoid(segOutput),dim=0), 0), 0)
+    # segOutput: [1,1,h,w]
+    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(segOutput.float(),size=size)).byte().cpu().numpy()
+
+    image = torch.unsqueeze(image,dim=0)
+    image = torch.squeeze(torch.nn.functional.interpolate(image.float(),size=size))
+
+    img_bgr = normalizeImage(image).transpose((1, 2, 0))[...,::-1] # Step 1. chw to hwc Step 2. RGB to BGR
+    colorMapMat = np.array(lane_index_colour,dtype=np.uint8)[...,::-1] # RGB to BGR
+    segImage = colorMapMat[plainSegOutput]
+    res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)[...,::-1].copy() # BGR to RGB
+    logger.add_image(tag, res, step, dataformats='HWC')
+
+
     
+
+def normalizeImage(imageTensor):
+    maxVal = torch.max(imageTensor)
+    minVal = torch.min(imageTensor)
+    imageNormalized = (imageTensor-minVal)/(maxVal-minVal)
+    return (imageNormalized*255).byte().cpu().numpy()
+
 
 def visualizeImageAndLabel(self, writer, tag, step, image, label, output):
     maxVal = torch.max(image)
@@ -64,4 +102,4 @@ def visualizeImageAndLabel(self, writer, tag, step, image, label, output):
 
 
 if __name__ == "__main__":
-    genSegLabelImage(torch.randn(5,36,100),(800,1280),"a.png")
+    genSegLabelImage(torch.randn(5,36,100),(800,1280),"a.png",use_color=False)

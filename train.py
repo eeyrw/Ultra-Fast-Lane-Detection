@@ -12,6 +12,7 @@ from utils.common import merge_config, save_model, save_best_model, cp_projects
 from utils.common import get_work_dir, get_logger
 
 from test_wrapper import testNet
+from utils.visualize import genSegLabelImage,logSegLabelImage
 
 import time
 
@@ -65,6 +66,9 @@ def train(net, data_loader, loss_dict, optimizer, scheduler,logger, epoch, metri
 
         t_net_0 = time.time()
         results = inference(net, data_label, use_aux)
+
+        if global_step % 200==0:
+            logSegLabelImage(logger,'predImg',global_step,data_label[0][0],results['seg_out'][0],(288,800))
 
         loss = calc_loss(loss_dict, results, logger, global_step)
         optimizer.zero_grad()
