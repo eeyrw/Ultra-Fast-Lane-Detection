@@ -20,6 +20,17 @@ import matplotlib.image as mpimg
 import matplotlib.gridspec as gridspec
 import matplotlib
 
+
+def genSegLabelImage(segOutput,size,path):
+    # segOutput: [class,h,w]
+    segOutput = torch.unsqueeze(torch.unsqueeze(torch.argmax(torch.sigmoid(segOutput),dim=0), 0), 0)
+    # segOutput: [1,1,h,w]
+    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(segOutput.float(),size=size)).byte()
+    print(plainSegOutput)
+    labelImage = Image.fromarray(plainSegOutput.cpu().numpy())
+    labelImage.save(path)
+    
+
 def visualizeImageAndLabel(self, writer, tag, step, image, label, output):
     maxVal = torch.max(image)
     minVal = torch.min(image)
@@ -49,3 +60,8 @@ def visualizeImageAndLabel(self, writer, tag, step, image, label, output):
                   * 0.7, cmap=plt.cm.rainbow, vmin=0, vmax=1)
     writer.add_figure(tag, fig2,
                       global_step=step, close=True, walltime=None)
+
+
+
+if __name__ == "__main__":
+    genSegLabelImage(torch.rand(5,6,7),(110,98),"a.png")
