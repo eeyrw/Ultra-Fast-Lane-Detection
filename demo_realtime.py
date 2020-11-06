@@ -109,13 +109,15 @@ if __name__ == "__main__":
         loc[out_j == cfg.griding_num] = 0
         out_j = loc
 
+        lane_index_colour =[(0, 0, 0),(192, 57, 43),(41, 128, 185),(22, 160, 133),(243, 156, 18)]
+
         for i in range(out_j.shape[1]):
             if np.sum(out_j[:, i] != 0) > 2:
                 for k in range(out_j.shape[0]):
                     if out_j[k, i] > 0:
-                        ppp = (int(out_j[k, i] * col_sample_w *
-                                   1640 / 800) - 1, int(590 - k * 20) - 1)
-                        cv2.circle(imageBgrCV, ppp, 5, (0, 255, 0), -1)
+                        ppp = (int(out_j[k, i] * col_sample_w * img_w / 800) - 1,
+                               int(img_h * (row_anchor[cls_num_per_lane-1-k]/288)) - 1)
+                        cv2.circle(imageBgrCV, ppp, 5, lane_index_colour[i][::-1], -1)
         if writeToVideo:
             vout.write(imageBgrCV)
         cv2.imshow('L', imageBgrCV)
