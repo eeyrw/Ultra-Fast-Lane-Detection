@@ -112,7 +112,7 @@ def get_work_dir(cfg):
     return work_dir
 
 def get_logger(work_dir, cfg):
-    logger = DistSummaryWriter(work_dir)
+    logger = DistSummaryWriter(work_dir,max_queue=100, flush_secs=60)
     config_txt = os.path.join(work_dir, 'cfg.txt')
     if is_main_process():
         with open(config_txt, 'w') as fp:

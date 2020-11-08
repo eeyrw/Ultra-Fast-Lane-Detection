@@ -44,7 +44,7 @@ def genSegLabelImage(image,segOutput,size,path,use_color=False):
         # labelImage.save(path)
 
 
-def logSegLabelImage(logger,tag,step,image,segOutput,size):
+def logSegLabelImage(logger,tag,step,image,pointOutput,row_anchor,griding_num,cls_num_per_lane,segOutput,size):
     # segOutput: [class,h,w]
     segOutput = torch.unsqueeze(torch.unsqueeze(torch.argmax(torch.sigmoid(segOutput),dim=0), 0), 0)
     # segOutput: [1,1,h,w]
@@ -56,7 +56,34 @@ def logSegLabelImage(logger,tag,step,image,segOutput,size):
     img_bgr = normalizeImage(image).transpose((1, 2, 0))[...,::-1] # Step 1. chw to hwc Step 2. RGB to BGR
     colorMapMat = np.array(lane_index_colour,dtype=np.uint8)[...,::-1] # RGB to BGR
     segImage = colorMapMat[plainSegOutput]
-    res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)[...,::-1].copy() # BGR to RGB
+    res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)
+    
+
+    img_h = size[0]
+    img_w = size[1]
+    col_sample = np.linspace(0, 800 - 1, griding_num)
+    col_sample_w = col_sample[1] - col_sample[0]
+
+    out_j = pointOutput.data.cpu().numpy()
+    out_j = out_j[:, ::-1, :]
+    prob = scipy.special.softmax(out_j[:-1, :, :], axis=0)
+    idx = np.arange(griding_num) + 1
+    idx = idx.reshape(-1, 1, 1)
+    loc = np.sum(prob * idx, axis=0)
+    out_j = np.argmax(out_j, axis=0)
+    loc[out_j == griding_num] = 0
+    out_j = loc
+
+    for i in range(out_j.shape[1]):
+        if np.sum(out_j[:, i] != 0) > 2:
+            for k in range(out_j.shape[0]):
+                if out_j[k, i] > 0:
+                    ppp = (int(out_j[k, i] * col_sample_w * img_w / 800) - 1,
+                           int(img_h * (row_anchor[cls_num_per_lane-1-k]/288)) - 1)
+                    cv2.circle(res, ppp, 4, lane_index_colour[0][::-1], -1)
+                    cv2.circle(res, ppp, 3, lane_index_colour[i+1][::-1], -1)
+
+    res = res[...,::-1].copy() # BGR to RGB
     logger.add_image(tag, res, step, dataformats='HWC')
 
 
