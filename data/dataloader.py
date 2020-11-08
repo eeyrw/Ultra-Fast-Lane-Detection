@@ -4,7 +4,7 @@ import numpy as np
 import torchvision.transforms as transforms
 import data.mytransforms as mytransforms
 from data.constant import tusimple_row_anchor, culane_row_anchor
-from data.dataset import LaneClsDataset, LaneTestDataset
+from data.dataset import LaneClsDataset, LaneTestDataset ,LaneGenPseduoDataset
 
 def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distributed, num_lanes):
     target_transform = transforms.Compose([
@@ -44,9 +44,9 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distr
                                            row_anchor = tusimple_row_anchor,
                                            segment_transform=segment_transform,use_aux=use_aux, num_lanes = num_lanes)
         cls_num_per_lane = 56                                           
-    elif dataset == 'Tusimple-semi-supervision':
+    elif dataset == 'Tusimple-pseudo':
         train_dataset = LaneClsDataset(data_root,
-                                           os.path.join(data_root, 'train_semi_supervision_gt.txt'),
+                                           os.path.join(data_root, 'train_pseudo_gt.txt'),
                                            img_transform=img_transform, target_transform=target_transform,
                                            simu_transform = simu_transform,
                                            griding_num=griding_num, 
@@ -76,6 +76,26 @@ def get_test_loader(batch_size, data_root,dataset, distributed):
         cls_num_per_lane = 18
     elif dataset == 'Tusimple':
         test_dataset = LaneTestDataset(data_root,os.path.join(data_root, 'test.txt'), img_transform = img_transforms)
+        cls_num_per_lane = 56
+
+    if distributed:
+        sampler = SeqDistributedSampler(test_dataset, shuffle = False)
+    else:
+        sampler = torch.utils.data.SequentialSampler(test_dataset)
+    loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, sampler = sampler, num_workers=4)
+    return loader
+
+def get_gen_pseudo_loader(batch_size, data_root,dataset, distributed):
+    img_transforms = transforms.Compose([
+        transforms.Resize((288, 800)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+    ])
+    if dataset == 'CULane':
+        test_dataset = LaneGenPseduoDataset(data_root,os.path.join(data_root, 'list/train_pseudo_gt.txt'),img_transform = img_transforms)
+        cls_num_per_lane = 18
+    elif dataset == 'Tusimple':
+        test_dataset = LaneGenPseduoDataset(data_root,os.path.join(data_root, 'train_pseudo_gt.txt'), img_transform = img_transforms)
         cls_num_per_lane = 56
 
     if distributed:

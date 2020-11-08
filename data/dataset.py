@@ -10,6 +10,30 @@ from data.mytransforms import find_start_pos
 def loader_func(path):
     return Image.open(path)
 
+class LaneGenPseduoDataset(torch.utils.data.Dataset):
+    def __init__(self, path, list_path, img_transform=None):
+        super(LaneGenPseduoDataset, self).__init__()
+        self.path = path
+        self.img_transform = img_transform
+        with open(list_path, 'r') as f:
+            self.list = f.readlines()
+        self.list = [l[1:] if l[0] == '/' else l for l in self.list]  # exclude the incorrect path prefix '/' of CULane
+
+
+    def __getitem__(self, index):
+        name = self.list[index].split()[0]
+        labal = self.list[index].split()[1]
+        img_path = os.path.join(self.path, name)
+        label_path = os.path.join(self.path, labal)
+        img = loader_func(img_path)
+
+        if self.img_transform is not None:
+            img = self.img_transform(img)
+
+        return img, img_path ,label_path
+
+    def __len__(self):
+        return len(self.list)
 
 class LaneTestDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform=None):
