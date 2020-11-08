@@ -15,7 +15,7 @@ from utils.common import get_work_dir, get_logger
 
 from test_wrapper import testNet
 from utils.visualize import genSegLabelImage, logSegLabelImage
-from data.constant import tusimple_row_anchor
+from data.constant import tusimple_row_anchor, culane_row_anchor
 
 import time
 
@@ -72,16 +72,24 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         results = inference(net, data_label, use_aux)
 
         if global_step % 200 == 0:
+            if cfg.dataset == 'CULane':
+                cls_num_per_lane = 18
+                img_w, img_h = 1640, 590
+                row_anchor = culane_row_anchor
+            elif cfg.dataset == 'Tusimple':
+                cls_num_per_lane = 56
+                img_w, img_h = 1280, 720
+                row_anchor = tusimple_row_anchor
             logSegLabelImage(logger,
                              'predImg',
                              global_step,
                              data_label[0][0],
                              results['cls_out'][0],
-                             tusimple_row_anchor,
+                             row_anchor,
                              cfg.griding_num,
                              cls_num_per_lane,
                              results['seg_out'][0],
-                             (288, 800))
+                             (img_h//2, img_w//2))
 
         loss = calc_loss(loss_dict, results, logger, global_step)
         optimizer.zero_grad()
