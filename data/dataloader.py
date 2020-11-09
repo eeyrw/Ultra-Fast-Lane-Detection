@@ -5,8 +5,9 @@ import torchvision.transforms as transforms
 import data.mytransforms as mytransforms
 from data.constant import tusimple_row_anchor, culane_row_anchor
 from data.dataset import LaneClsDataset, LaneTestDataset ,LaneGenPseudoDataset
+from data.datasetUtils import get_partial_dataset
 
-def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distributed, num_lanes):
+def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distributed, num_lanes ,proportion=1):
     target_transform = transforms.Compose([
         mytransforms.FreeScaleMask((288, 800)),
         mytransforms.MaskToTensor(),
@@ -56,6 +57,8 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distr
     else:
         raise NotImplementedError
 
+    train_dataset = get_partial_dataset(train_dataset,proportion)
+
     if distributed:
         sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     else:
@@ -65,7 +68,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distr
 
     return train_loader, cls_num_per_lane
 
-def get_test_loader(batch_size, data_root,dataset, distributed):
+def get_test_loader(batch_size, data_root,dataset, distributed ,proportion=1):
     img_transforms = transforms.Compose([
         transforms.Resize((288, 800)),
         transforms.ToTensor(),
@@ -77,6 +80,8 @@ def get_test_loader(batch_size, data_root,dataset, distributed):
     elif dataset == 'Tusimple':
         test_dataset = LaneTestDataset(data_root,os.path.join(data_root, 'test.txt'), img_transform = img_transforms)
         cls_num_per_lane = 56
+
+    test_dataset = get_partial_dataset(test_dataset,proportion)
 
     if distributed:
         sampler = SeqDistributedSampler(test_dataset, shuffle = False)
