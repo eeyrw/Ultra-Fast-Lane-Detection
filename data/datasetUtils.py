@@ -29,9 +29,12 @@ def pseudo_random_split(dataset, lengths, seed=42):
     return [Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
 
 def get_partial_dataset(dataset, percent, seed=42):
-    datasetLen = len(dataset)
-    selectionLen = int(datasetLen*percent)
-    return pseudo_random_split(dataset, [selectionLen, datasetLen-selectionLen])[0]
+    if percent < 1:
+        datasetLen = len(dataset)
+        selectionLen = int(datasetLen*percent)
+        return pseudo_random_split(dataset, [selectionLen, datasetLen-selectionLen])[0]
+    else:
+        return dataset
 
 
 if __name__ == "__main__":
