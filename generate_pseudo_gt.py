@@ -27,7 +27,7 @@ def get_args():
     return parser
 
 
-def genPseduoGt(datasetRoot, outputPath):
+def genPseudoSampleList(datasetRoot, outputPath):
 
     wantedFrames = ['1', '10']
     # training set
@@ -44,7 +44,7 @@ def genPseduoGt(datasetRoot, outputPath):
             f.write(clipPath + ' ' + labalPath+'\n')
 
 
-def inference(net, data_root,distributed, batch_size=34):
+def genPseudoGt(net, data_root,distributed, batch_size=34):
     loader = get_gen_pseudo_loader(
         batch_size, data_root, 'Tusimple', distributed)
     for i, data in enumerate(dist_tqdm(loader)):
@@ -54,7 +54,7 @@ def inference(net, data_root,distributed, batch_size=34):
             out = net(imgs)
             for img, segout, img_path, label_path in zip(imgs, out[1], img_paths, label_paths):
                 genSegLabelImage(img, segout, (720, 1280),
-                                 label_path, use_color=True)
+                                 label_path, use_color=False)
 
 
 if __name__ == "__main__":
@@ -106,5 +106,5 @@ if __name__ == "__main__":
     if distributed:
         net = torch.nn.parallel.DistributedDataParallel(
             net, device_ids=[args.local_rank])
-    genPseduoGt(args.root, os.path.join(args.root, 'train_pseudo_gt.txt'))
-    inference(net,args.root,distributed)
+    genPseudoSampleList(args.root, os.path.join(args.root, 'train_pseudo_gt.txt'))
+    genPseudoGt(net,args.root,distributed)
