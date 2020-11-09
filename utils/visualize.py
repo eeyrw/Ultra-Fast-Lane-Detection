@@ -19,8 +19,10 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.gridspec as gridspec
 import matplotlib
-lane_index_colour =[(0, 0, 0),(192, 57, 43),(41, 128, 185),(22, 160, 133),(243, 156, 18)]
+import sys
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from data.constant import tusimple_row_anchor, culane_row_anchor, lane_index_colour
 
 
 def genSegLabelImage(image,segOutput,size,path,use_color=False):

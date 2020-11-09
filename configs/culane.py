@@ -1,6 +1,7 @@
 # DATA
 dataset='CULane'
 data_root = None
+raw_img_size = [1640, 590] #h,w
 
 # TRAIN
 epoch = 50

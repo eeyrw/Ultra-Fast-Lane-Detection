@@ -10,8 +10,8 @@ import tqdm
 import numpy as np
 import torchvision.transforms as transforms
 from PIL import Image
-from data.constant import culane_row_anchor, tusimple_row_anchor
-lane_index_colour =[(0, 0, 0),(192, 57, 43),(41, 128, 185),(22, 160, 133),(243, 156, 18)]
+from data.constant import culane_row_anchor, tusimple_row_anchor, lane_index_colour
+
 
 def resizeAndCropToTargetSize(img, width, height):
     rawW, rawH = img.size

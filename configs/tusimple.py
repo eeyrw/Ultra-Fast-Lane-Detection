@@ -1,6 +1,7 @@
 # DATA
 dataset='Tusimple'
 data_root = None
+raw_img_size = [1280, 720] #h,w
 
 # TRAIN
 epoch = 100
