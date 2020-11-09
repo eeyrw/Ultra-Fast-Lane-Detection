@@ -10,9 +10,9 @@ from data.mytransforms import find_start_pos
 def loader_func(path):
     return Image.open(path)
 
-class LaneGenPseduoDataset(torch.utils.data.Dataset):
+class LaneGenPseudoDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform=None):
-        super(LaneGenPseduoDataset, self).__init__()
+        super(LaneGenPseudoDataset, self).__init__()
         self.path = path
         self.img_transform = img_transform
         with open(list_path, 'r') as f:

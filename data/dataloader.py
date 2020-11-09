@@ -4,7 +4,7 @@ import numpy as np
 import torchvision.transforms as transforms
 import data.mytransforms as mytransforms
 from data.constant import tusimple_row_anchor, culane_row_anchor
-from data.dataset import LaneClsDataset, LaneTestDataset ,LaneGenPseduoDataset
+from data.dataset import LaneClsDataset, LaneTestDataset ,LaneGenPseudoDataset
 
 def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux, distributed, num_lanes):
     target_transform = transforms.Compose([
@@ -92,10 +92,10 @@ def get_gen_pseudo_loader(batch_size, data_root,dataset, distributed):
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
     if dataset == 'CULane':
-        test_dataset = LaneGenPseduoDataset(data_root,os.path.join(data_root, 'list/train_pseudo_gt.txt'),img_transform = img_transforms)
+        test_dataset = LaneGenPseudoDataset(data_root,os.path.join(data_root, 'list/train_pseudo_gt.txt'),img_transform = img_transforms)
         cls_num_per_lane = 18
     elif dataset == 'Tusimple':
-        test_dataset = LaneGenPseduoDataset(data_root,os.path.join(data_root, 'train_pseudo_gt.txt'), img_transform = img_transforms)
+        test_dataset = LaneGenPseudoDataset(data_root,os.path.join(data_root, 'train_pseudo_gt.txt'), img_transform = img_transforms)
         cls_num_per_lane = 56
 
     if distributed:
