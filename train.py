@@ -66,12 +66,12 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
     for b_idx, data_label in enumerate(progress_bar):
         t_data_1 = time.time()
         reset_metrics(metric_dict)
-        global_step = epoch * len(data_loader) + b_idx
+        global_step = (epoch * len(data_loader) + b_idx) * cfg.batch_size
 
         t_net_0 = time.time()
         results = inference(net, data_label, use_aux)
 
-        if global_step % 200 == 0:
+        if global_step % 200*cfg.batch_size == 0:
             if cfg.dataset == 'CULane':
                 cls_num_per_lane = 18
                 img_w, img_h = 1640, 590
@@ -189,7 +189,7 @@ if __name__ == "__main__":
         if cfg.test_during_train and (epoch % cfg.test_interval == 0):
             metricsDict, isBetter = testNet(
                 net, args, cfg, True, lastMetrics=bestMetrics)
-            stepAfterEpoch = (epoch+1) * len(train_loader)
+            stepAfterEpoch = (epoch+1) * len(train_loader) * cfg.batch_size
             for metricName, metricValue in metricsDict.items():
                 logger.add_scalar('test/'+metricName,
                                   metricValue, global_step=stepAfterEpoch)
