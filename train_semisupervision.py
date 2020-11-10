@@ -142,7 +142,10 @@ if __name__ == "__main__":
                             '152', '50next', '101next', '50wide', '101wide']
 
     train_loader, cls_num_per_lane = get_train_loader(
-        cfg.batch_size, cfg.data_root, cfg.griding_num, cfg.dataset, cfg.use_aux, distributed, cfg.num_lanes)
+        cfg.batch_size, cfg.data_root,
+        cfg.griding_num, cfg.dataset,
+        cfg.use_aux, distributed,
+        cfg.num_lanes, cfg.train_ds_proportion)
 
     net = parsingNet(pretrained=True, backbone=cfg.backbone, cls_dim=(
         cfg.griding_num+1, cls_num_per_lane, cfg.num_lanes), use_aux=cfg.use_aux).cuda()

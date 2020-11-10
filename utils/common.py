@@ -22,6 +22,8 @@ def get_args():
     parser.add_argument('--dataset', default = None, type = str)
     parser.add_argument('--data_root', default = None, type = str)
     parser.add_argument('--raw_img_size', default = None, type = int, nargs='+')
+    parser.add_argument('--train_ds_proportion', default = 1, type = float)
+    parser.add_argument('--test_ds_proportion', default = 1, type = float)    
     parser.add_argument('--epoch', default = None, type = int)
     parser.add_argument('--batch_size', default = None, type = int)
     parser.add_argument('--optimizer', default = None, type = str)
@@ -53,7 +55,8 @@ def merge_config():
     args = get_args().parse_args()
     cfg = Config.fromfile(args.config)
 
-    items = ['dataset','data_root','raw_img_size','epoch','batch_size','optimizer','learning_rate',
+    items = ['dataset','data_root','raw_img_size','train_ds_proportion','test_ds_proportion',
+    'epoch','batch_size','optimizer','learning_rate',
     'weight_decay','momentum','scheduler','steps','gamma','warmup','warmup_iters',
     'use_aux','griding_num','backbone','sim_loss_w','shp_loss_w','note','log_path',
     'finetune','resume', 'test_model','test_work_dir', 'num_lanes','test_interval','test_during_train']
