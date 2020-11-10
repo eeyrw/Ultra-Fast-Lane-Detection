@@ -157,6 +157,10 @@ class DistSummaryWriter(SummaryWriter):
         if can_log():
             super(DistSummaryWriter, self).add_image(*args, **kwargs)
 
+    def add_text(self, *args, **kwargs):
+        if can_log():
+            super(DistSummaryWriter, self).add_text(*args, **kwargs)
+
     def close(self):
         if can_log():
             super(DistSummaryWriter, self).close()

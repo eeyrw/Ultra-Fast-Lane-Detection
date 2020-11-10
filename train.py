@@ -188,6 +188,7 @@ if __name__ == "__main__":
     cp_projects(work_dir)
 
     bestMetrics = None
+    logger.add_text('configuration', str(cfg))
 
     for epoch in range(resume_epoch, cfg.epoch):
 
