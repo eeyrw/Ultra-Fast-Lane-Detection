@@ -147,6 +147,10 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
     net.eval()
     metricsDict = {}
     isBetter = True
+
+    if proportion!=1:
+        raise NotImplementedError("Using partial test set is not supporting until now.")
+
     if dataset == 'CULane':
         run_test(net, data_root, 'culane_eval_tmp', work_dir,
                  griding_num, use_aux, distributed, proportion)
@@ -178,7 +182,7 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
     elif dataset == 'Tusimple':
         exp_name = 'tusimple_eval_tmp'
         run_test_tusimple(net, data_root, work_dir, exp_name,
-                          griding_num, use_aux, distributed, proportion)
+                          griding_num, use_aux, distributed, proportion=proportion)
         synchronize()  # wait for all results
         if is_main_process():
             combine_tusimple_test(work_dir, exp_name)

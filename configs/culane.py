@@ -2,6 +2,8 @@
 dataset='CULane'
 data_root = None
 raw_img_size = [1640, 590] #h,w
+train_ds_proportion=1
+test_ds_proportion=1
 
 # TRAIN
 epoch = 50
@@ -15,7 +17,7 @@ scheduler = 'multi' #['multi', 'cos']
 steps = [25,38]
 gamma  = 0.1
 warmup = 'linear'
-warmup_iters = 695
+warmup_iters = 21000 #sample iteration
 
 # NETWORK
 use_aux = True

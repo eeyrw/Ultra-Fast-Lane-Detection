@@ -22,8 +22,8 @@ def get_args():
     parser.add_argument('--dataset', default = None, type = str)
     parser.add_argument('--data_root', default = None, type = str)
     parser.add_argument('--raw_img_size', default = None, type = int, nargs='+')
-    parser.add_argument('--train_ds_proportion', default = 1, type = float)
-    parser.add_argument('--test_ds_proportion', default = 1, type = float)    
+    parser.add_argument('--train_ds_proportion', default = None, type = float)
+    parser.add_argument('--test_ds_proportion', default = None, type = float)    
     parser.add_argument('--epoch', default = None, type = int)
     parser.add_argument('--batch_size', default = None, type = int)
     parser.add_argument('--optimizer', default = None, type = str)
@@ -116,7 +116,7 @@ def get_work_dir(cfg):
     return work_dir
 
 def get_logger(work_dir, cfg):
-    logger = DistSummaryWriter(work_dir,max_queue=100, flush_secs=60)
+    logger = DistSummaryWriter(work_dir,flush_secs=60)
     config_txt = os.path.join(work_dir, 'cfg.txt')
     if is_main_process():
         with open(config_txt, 'w') as fp:
