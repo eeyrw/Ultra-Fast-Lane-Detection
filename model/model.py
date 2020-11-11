@@ -90,7 +90,6 @@ class parsingNet(torch.nn.Module):
 
         if self.use_spp:
             spp_out = self.spp(x2)
-            print(spp_out.shape)
         if self.use_aux:
             x2 = self.aux_header2(x2)
             x3 = self.aux_header3(x3)
