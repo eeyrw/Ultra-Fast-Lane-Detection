@@ -1,5 +1,6 @@
 import torch
 from model.backbone import resnet
+from model.spp import SPPLayer
 import numpy as np
 
 class conv_bn_relu(torch.nn.Module):
@@ -16,7 +17,7 @@ class conv_bn_relu(torch.nn.Module):
         x = self.relu(x)
         return x
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_aux=False):
+    def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_aux=False, use_spp=False):
         super(parsingNet, self).__init__()
 
         self.size = size
@@ -25,6 +26,7 @@ class parsingNet(torch.nn.Module):
         self.cls_dim = cls_dim # (num_gridding, num_cls_per_lane, num_of_lanes)
         # num_cls_per_lane is the number of row anchors
         self.use_aux = use_aux
+        self.use_spp = use_spp
         self.total_dim = np.prod(cls_dim)
 
         # input : nchw,
@@ -57,13 +59,24 @@ class parsingNet(torch.nn.Module):
             )
             initialize_weights(self.aux_header2,self.aux_header3,self.aux_header4,self.aux_combine)
 
+        if use_spp:
+            self.interPoolChnNum = 1792
+        else:
+            self.interPoolChnNum = 1800
+
         self.cls = torch.nn.Sequential(
-            torch.nn.Linear(1800, 2048),
+            torch.nn.Linear(self.interPoolChnNum, 2048),
             torch.nn.ReLU(),
             torch.nn.Linear(2048, self.total_dim),
         )
 
-        self.pool = torch.nn.Conv2d(512,8,1) if backbone in ['34','18'] else torch.nn.Conv2d(2048,8,1)
+        if self.use_spp:
+            self.spp = SPPLayer(3)
+
+        if self.use_spp:
+            self.pool = torch.nn.Conv2d(512,128,1) if backbone in ['34','18'] else torch.nn.Conv2d(2048,128,1)
+        else:
+            self.pool = torch.nn.Conv2d(512,8,1) if backbone in ['34','18'] else torch.nn.Conv2d(2048,8,1)
         # 1/32,2048 channel
         # 288,800 -> 9,40,2048
         # (w+1) * sample_rows * 4
@@ -74,6 +87,10 @@ class parsingNet(torch.nn.Module):
         # n c h w - > n 2048 sh sw
         # -> n 2048
         x2,x3,fea = self.model(x)
+
+        if self.use_spp:
+            spp_out = self.spp(x2)
+            print(spp_out.shape)
         if self.use_aux:
             x2 = self.aux_header2(x2)
             x3 = self.aux_header3(x3)
@@ -85,7 +102,10 @@ class parsingNet(torch.nn.Module):
         else:
             aux_seg = None
 
-        fea = self.pool(fea).view(-1, 1800)
+        if self.use_spp:
+            fea = self.spp(self.pool(fea))+ spp_out
+        else:
+            fea = self.pool(fea).view(-1, self.interPoolChnNum)
 
         group_cls = self.cls(fea).view(-1, *self.cls_dim)
 

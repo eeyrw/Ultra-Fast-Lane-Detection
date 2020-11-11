@@ -21,6 +21,7 @@ warmup_iters = 21000 #sample iteration
 
 # NETWORK
 use_aux = True
+use_spp = True
 griding_num = 200
 backbone = '18'
 

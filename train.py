@@ -155,7 +155,7 @@ if __name__ == "__main__":
         cfg.num_lanes, cfg.train_ds_proportion)
 
     net = parsingNet(pretrained=True, backbone=cfg.backbone, cls_dim=(
-        cfg.griding_num+1, cls_num_per_lane, cfg.num_lanes), use_aux=cfg.use_aux).cuda()
+        cfg.griding_num+1, cls_num_per_lane, cfg.num_lanes), use_aux=cfg.use_aux, use_spp=cfg.use_spp).cuda()
 
     if distributed:
         net = torch.nn.parallel.DistributedDataParallel(
@@ -180,7 +180,8 @@ if __name__ == "__main__":
     else:
         resume_epoch = 0
 
-    scheduler = get_scheduler(optimizer, cfg, len(train_loader) * cfg.batch_size)
+    scheduler = get_scheduler(
+        optimizer, cfg, len(train_loader) * cfg.batch_size)
     dist_print(len(train_loader))
     metric_dict = get_metric_dict(cfg)
     loss_dict = get_loss_dict(cfg)
@@ -197,7 +198,8 @@ if __name__ == "__main__":
         if cfg.test_during_train and (epoch % cfg.test_interval == 0):
             metricsDict, isBetter = testNet(
                 net, args, cfg, True, lastMetrics=bestMetrics)
-            sampleIterAfterEpoch = (epoch+1) * len(train_loader) * cfg.batch_size
+            sampleIterAfterEpoch = (epoch+1) * \
+                len(train_loader) * cfg.batch_size
             for metricName, metricValue in metricsDict.items():
                 logger.add_scalar('test/'+metricName,
                                   metricValue, global_step=sampleIterAfterEpoch)

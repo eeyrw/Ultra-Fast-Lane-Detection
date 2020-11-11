@@ -38,6 +38,7 @@ def get_args():
     parser.add_argument('--backbone', default = None, type = str)
     parser.add_argument('--griding_num', default = None, type = int)
     parser.add_argument('--use_aux', default = None, type = str2bool)
+    parser.add_argument('--use_spp', default = None, type = str2bool)
     parser.add_argument('--sim_loss_w', default = None, type = float)
     parser.add_argument('--shp_loss_w', default = None, type = float)
     parser.add_argument('--note', default = None, type = str)
@@ -58,7 +59,7 @@ def merge_config():
     items = ['dataset','data_root','raw_img_size','train_ds_proportion','test_ds_proportion',
     'epoch','batch_size','optimizer','learning_rate',
     'weight_decay','momentum','scheduler','steps','gamma','warmup','warmup_iters',
-    'use_aux','griding_num','backbone','sim_loss_w','shp_loss_w','note','log_path',
+    'use_aux','use_spp','griding_num','backbone','sim_loss_w','shp_loss_w','note','log_path',
     'finetune','resume', 'test_model','test_work_dir', 'num_lanes','test_interval','test_during_train']
     for item in items:
         if getattr(args, item) is not None:
