@@ -20,12 +20,22 @@ from data.constant import tusimple_row_anchor, culane_row_anchor
 import time
 
 
-def inference(net, data_label, use_aux):
-    if use_aux:
+def inference(net, data_label, use_aux, load_name):
+    if use_aux and not load_name:
         img, cls_label, seg_label = data_label
         img, cls_label, seg_label = img.cuda(), cls_label.cuda(), seg_label.cuda()
         cls_out, seg_out = net(img)
         return {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out': seg_out, 'seg_label': seg_label}
+    elif load_name and not use_aux:
+        img, cls_label, img_name = data_label
+        img, cls_label = img.cuda(), cls_label.cuda()
+        cls_out = net(img)
+        return {'cls_out': cls_out, 'cls_label': cls_label, 'img_name': img_name}
+    elif use_aux and load_name:
+        img, cls_label, seg_label, img_name = data_label
+        img, cls_label, seg_label = img.cuda(), cls_label.cuda(), seg_label.cuda()
+        cls_out, seg_out = net(img)
+        return {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out': seg_out, 'seg_label': seg_label, 'img_name': img_name}
     else:
         img, cls_label = data_label
         img, cls_label = img.cuda(), cls_label.cuda()
@@ -71,7 +81,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         global_sample_iter = global_batch_step * cfg.batch_size
 
         t_net_0 = time.time()
-        results = inference(net, data_label, use_aux)
+        results = inference(net, data_label, use_aux, load_name=True)
 
         if global_batch_step % 200 == 0:
             if cfg.dataset == 'CULane':
@@ -152,7 +162,9 @@ if __name__ == "__main__":
         cfg.batch_size, cfg.data_root,
         cfg.griding_num, cfg.dataset,
         cfg.use_aux, distributed,
-        cfg.num_lanes, cfg.train_ds_proportion)
+        cfg.num_lanes, cfg.train_ds_proportion,
+        load_name=True
+    )
 
     net = parsingNet(pretrained=True, backbone=cfg.backbone, cls_dim=(
         cfg.griding_num+1, cls_num_per_lane, cfg.num_lanes), use_aux=cfg.use_aux, use_spp=cfg.use_spp).cuda()

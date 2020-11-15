@@ -38,8 +38,18 @@ def get_partial_dataset(dataset, percent, seed=42):
     else:
         return dataset
 
+def split_dataset(dataset, percent, seed=42):
+    if percent < 1:
+        datasetLen = len(dataset)
+        selectionLen = int(datasetLen*percent)
+        if selectionLen < 1: # Keep one sample at least
+            selectionLen = 1 
+        return pseudo_random_split(dataset, [selectionLen, datasetLen-selectionLen])
+    else:
+        return [dataset,[]] 
+
 
 if __name__ == "__main__":
-    print(list(get_partial_dataset(range(20),0.0001)))    
-    print(list(get_partial_dataset(range(20),0.1)))    
-    print(list(get_partial_dataset(range(20),1)))
+    print(list(split_dataset(range(20),0.0001)))    
+    print(list(split_dataset(range(20),0.1)))    
+    print(list(split_dataset(range(20),1)))

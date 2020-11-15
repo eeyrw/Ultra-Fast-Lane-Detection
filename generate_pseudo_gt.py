@@ -27,34 +27,56 @@ def get_args():
     return parser
 
 
-def genPseudoSampleList(datasetRoot, outputPath):
+# def genPseudoSampleList(datasetRoot, outputPath):
 
-    wantedFrames = ['1', '10']
-    # training set
-    names, _ = get_tusimple_list(args.root,  [
-                                 'label_data_0601.json', 'label_data_0531.json', 'label_data_0313.json'])
-    clipDirList = [os.path.dirname(name) for name in names]
-    wantedClipList = [os.path.join(clipDir, frame+'.jpg')
-                      for clipDir in clipDirList for frame in wantedFrames]
-    wantedClipListGt = [os.path.join(clipDir, frame+'.png')
-                        for clipDir in clipDirList for frame in wantedFrames]
+#     wantedFrames = ['1', '10']
+#     # training set
+#     names, _ = get_tusimple_list(args.root,  [
+#                                  'label_data_0601.json', 'label_data_0531.json', 'label_data_0313.json'])
+#     clipDirList = [os.path.dirname(name) for name in names]
+#     wantedClipList = [os.path.join(clipDir, frame+'.jpg')
+#                       for clipDir in clipDirList for frame in wantedFrames]
+#     wantedClipListGt = [os.path.join(clipDir, frame+'.png')
+#                         for clipDir in clipDirList for frame in wantedFrames]
 
-    with open(outputPath, 'w') as f:
-        for clipPath, labalPath in zip(wantedClipList, wantedClipListGt):
-            f.write(clipPath + ' ' + labalPath+'\n')
+#     with open(outputPath, 'w') as f:
+#         for clipPath, labalPath in zip(wantedClipList, wantedClipListGt):
+#             f.write(clipPath + ' ' + labalPath+'\n')
 
+def genPseudoGt(net,loader,datasetRoot,listPath,pseudoGtPath,iter_num):
+    print('start generating pseudo ground truth...')
+    net.eval()
+    progress_bar = dist_tqdm(loader)
+    if not os.path.exists(os.path.join(datasetRoot,pseudoGtPath)):
+        os.mkdir(os.path.join(datasetRoot,pseudoGtPath))
+    with open(os.path.join(datasetRoot,listPath), 'w') as f:
+        for b_idx, data_label in enumerate(progress_bar):
+            imgs, cls_labels, seg_labels, img_names = data_label
+            imgs = imgs.cuda()
 
-def genPseudoGt(net, data_root,distributed, batch_size=34):
-    loader = get_gen_pseudo_loader(
-        batch_size, data_root, 'Tusimple', distributed)
-    for i, data in enumerate(dist_tqdm(loader)):
-        imgs, img_paths, label_paths = data
-        imgs = imgs.cuda()
-        with torch.no_grad():
-            out = net(imgs)
-            for img, segout, img_path, label_path in zip(imgs, out[1], img_paths, label_paths):
-                genSegLabelImage(img, segout, (720, 1280),
-                                 label_path, use_color=False)
+            with torch.no_grad():
+                out = net(imgs)
+                for img, segout, img_path in zip(imgs, out[1], img_names):
+                    (fileName, ext) = os.path.splitext(img_path)
+                    (path, filenameWithExt) = os.path.split(img_path)
+                    label_path = os.path.join(pseudoGtPath,fileName+'.png')
+                    if not os.path.exists(os.path.join(datasetRoot,pseudoGtPath,path)):
+                        os.makedirs(os.path.join(datasetRoot,pseudoGtPath,path))
+                    genSegLabelImage(img, segout, (720, 1280),os.path.join(datasetRoot,label_path), use_color=False)
+                    genSegLabelImage(img, segout, (720, 1280),os.path.join(datasetRoot,pseudoGtPath,fileName+'_%d.png'%iter_num), use_color=True)
+                    f.write(img_path + ' ' + label_path+'\n')
+
+# def genPseudoGt(net, data_root,distributed, batch_size=34):
+#     loader = get_gen_pseudo_loader(
+#         batch_size, data_root, 'Tusimple', distributed)
+#     for i, data in enumerate(dist_tqdm(loader)):
+#         imgs, img_paths, label_paths = data
+#         imgs = imgs.cuda()
+#         with torch.no_grad():
+#             out = net(imgs)
+#             for img, segout, img_path, label_path in zip(imgs, out[1], img_paths, label_paths):
+#                 genSegLabelImage(img, segout, (720, 1280),
+#                                  label_path, use_color=False)
 
 
 if __name__ == "__main__":
@@ -106,5 +128,5 @@ if __name__ == "__main__":
     if distributed:
         net = torch.nn.parallel.DistributedDataParallel(
             net, device_ids=[args.local_rank])
-    genPseudoSampleList(args.root, os.path.join(args.root, 'train_pseudo_gt.txt'))
-    genPseudoGt(net,args.root,distributed)
+    # genPseudoSampleList(args.root, os.path.join(args.root, 'train_pseudo_gt.txt'))
+    # genPseudoGt(net,args.root,distributed)

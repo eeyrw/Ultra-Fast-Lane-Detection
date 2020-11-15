@@ -10,6 +10,7 @@ from data.mytransforms import find_start_pos
 def loader_func(path):
     return Image.open(path)
 
+
 class LaneGenPseudoDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform=None):
         super(LaneGenPseudoDataset, self).__init__()
@@ -17,8 +18,8 @@ class LaneGenPseudoDataset(torch.utils.data.Dataset):
         self.img_transform = img_transform
         with open(list_path, 'r') as f:
             self.list = f.readlines()
-        self.list = [l[1:] if l[0] == '/' else l for l in self.list]  # exclude the incorrect path prefix '/' of CULane
-
+        # exclude the incorrect path prefix '/' of CULane
+        self.list = [l[1:] if l[0] == '/' else l for l in self.list]
 
     def __getitem__(self, index):
         name = self.list[index].split()[0]
@@ -30,10 +31,11 @@ class LaneGenPseudoDataset(torch.utils.data.Dataset):
         if self.img_transform is not None:
             img = self.img_transform(img)
 
-        return img, img_path ,label_path
+        return img, img_path, label_path
 
     def __len__(self):
         return len(self.list)
+
 
 class LaneTestDataset(torch.utils.data.Dataset):
     def __init__(self, path, list_path, img_transform=None):
@@ -42,8 +44,8 @@ class LaneTestDataset(torch.utils.data.Dataset):
         self.img_transform = img_transform
         with open(list_path, 'r') as f:
             self.list = f.readlines()
-        self.list = [l[1:] if l[0] == '/' else l for l in self.list]  # exclude the incorrect path prefix '/' of CULane
-
+        # exclude the incorrect path prefix '/' of CULane
+        self.list = [l[1:] if l[0] == '/' else l for l in self.list]
 
     def __getitem__(self, index):
         name = self.list[index].split()[0]
@@ -60,8 +62,9 @@ class LaneTestDataset(torch.utils.data.Dataset):
 
 
 class LaneClsDataset(torch.utils.data.Dataset):
-    def __init__(self, path, list_path, img_transform = None,target_transform = None,simu_transform = None, griding_num=50, load_name = False,
-                row_anchor = None,use_aux=False,segment_transform=None, num_lanes = 4):
+    def __init__(self, path, list_path, img_transform=None, target_transform=None,
+                 simu_transform=None, griding_num=50, load_name=False,
+                 row_anchor=None, use_aux=False, segment_transform=None, num_lanes=4):
         super(LaneClsDataset, self).__init__()
         self.img_transform = img_transform
         self.target_transform = target_transform
@@ -92,14 +95,11 @@ class LaneClsDataset(torch.utils.data.Dataset):
 
         img_path = os.path.join(self.path, img_name)
         img = loader_func(img_path)
-    
 
         if self.simu_transform is not None:
             img, label = self.simu_transform(img, label)
         lane_pts = self._get_index(label)
         # get the coordinates of lanes at row anchors
-
-
 
         w, h = img.size
         cls_label = self._grid_pts(lane_pts, self.griding_num, w)
@@ -111,11 +111,13 @@ class LaneClsDataset(torch.utils.data.Dataset):
         if self.img_transform is not None:
             img = self.img_transform(img)
 
+        ret = [img, cls_label]
+
         if self.use_aux:
-            return img, cls_label, seg_label
+            ret.append(seg_label)
         if self.load_name:
-            return img, cls_label, img_name
-        return img, cls_label
+            ret.append(img_name)
+        return ret
 
     def __len__(self):
         return len(self.list)
@@ -137,11 +139,11 @@ class LaneClsDataset(torch.utils.data.Dataset):
         w, h = label.size
 
         if h != 288:
-            scale_f = lambda x : int((x * 1.0/288) * h)
-            sample_tmp = list(map(scale_f,self.row_anchor))
+            def scale_f(x): return int((x * 1.0/288) * h)
+            sample_tmp = list(map(scale_f, self.row_anchor))
 
-        all_idx = np.zeros((self.num_lanes,len(sample_tmp),2))
-        for i,r in enumerate(sample_tmp):
+        all_idx = np.zeros((self.num_lanes, len(sample_tmp), 2))
+        for i, r in enumerate(sample_tmp):
             label_r = np.asarray(label)[int(round(r))]
             for lane_idx in range(1, self.num_lanes + 1):
                 pos = np.where(label_r == lane_idx)[0]
@@ -157,15 +159,15 @@ class LaneClsDataset(torch.utils.data.Dataset):
 
         all_idx_cp = all_idx.copy()
         for i in range(self.num_lanes):
-            if np.all(all_idx_cp[i,:,1] == -1):
+            if np.all(all_idx_cp[i, :, 1] == -1):
                 continue
             # if there is no lane
 
-            valid = all_idx_cp[i,:,1] != -1
+            valid = all_idx_cp[i, :, 1] != -1
             # get all valid lane points' index
-            valid_idx = all_idx_cp[i,valid,:]
+            valid_idx = all_idx_cp[i, valid, :]
             # get all valid lane points
-            if valid_idx[-1,0] == all_idx_cp[0,-1,0]:
+            if valid_idx[-1, 0] == all_idx_cp[0, -1, 0]:
                 # if the last valid lane point's y-coordinate is already the last y-coordinate of all rows
                 # this means this lane has reached the bottom boundary of the image
                 # so we skip
@@ -174,16 +176,16 @@ class LaneClsDataset(torch.utils.data.Dataset):
                 continue
             # if the lane is too short to extend
 
-            valid_idx_half = valid_idx[len(valid_idx) // 2:,:]
-            p = np.polyfit(valid_idx_half[:,0], valid_idx_half[:,1],deg = 1)
-            start_line = valid_idx_half[-1,0]
-            pos = find_start_pos(all_idx_cp[i,:,0],start_line) + 1
-            
-            fitted = np.polyval(p,all_idx_cp[i,pos:,0])
-            fitted = np.array([-1  if y < 0 or y > w-1 else y for y in fitted])
+            valid_idx_half = valid_idx[len(valid_idx) // 2:, :]
+            p = np.polyfit(valid_idx_half[:, 0], valid_idx_half[:, 1], deg=1)
+            start_line = valid_idx_half[-1, 0]
+            pos = find_start_pos(all_idx_cp[i, :, 0], start_line) + 1
 
-            assert np.all(all_idx_cp[i,pos:,1] == -1)
-            all_idx_cp[i,pos:,1] = fitted
+            fitted = np.polyval(p, all_idx_cp[i, pos:, 0])
+            fitted = np.array([-1 if y < 0 or y > w-1 else y for y in fitted])
+
+            assert np.all(all_idx_cp[i, pos:, 1] == -1)
+            all_idx_cp[i, pos:, 1] = fitted
         if -1 in all_idx[:, :, 0]:
             pdb.set_trace()
         return all_idx_cp
