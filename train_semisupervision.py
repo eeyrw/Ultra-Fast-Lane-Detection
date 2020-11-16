@@ -211,7 +211,7 @@ def getPseudoAnnotatedLoader(args, cfg):
     )
     return  pseudo_annotated_loader, cls_num_per_lane
 
-def getOptimizerAndSchedulerAndResumeEpoch(net,loader,args,cfg):
+def getOptimizerAndSchedulerAndResumeEpoch(type, net,loader,args,cfg):
     optimizer = get_optimizer(net, cfg)
     resume_epoch = recoveryState(net, optimizer, args, cfg)
     scheduler = get_scheduler(
@@ -252,8 +252,7 @@ if __name__ == "__main__":
             net, device_ids=[args.local_rank])
 
     # Step 0: Train a teacher net with mannually annotated sample
-
-
+    dist_print('Iteration %d Step 0: Train a teacher net with mannually annotated sample')
 
     dist_print(len(annotated_loader))
     metric_dict = get_metric_dict(cfg)
@@ -265,26 +264,29 @@ if __name__ == "__main__":
     logger.add_text('configuration', str(cfg))
 
     net_teacher = net_teacher.cuda()
-    optmzr,scdulr,resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(net_teacher,annotated_loader,args,cfg)
+    optmzr,scdulr,resume_epoch = getOptimizerAndSchedulerAndResumeEpoch('train',net_teacher,annotated_loader,args,cfg)
     bestMetrics, globalIter = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
                args, cfg, logger,bestMetrics, resume_epoch, 0)
 
     for grandIterNum in range(1, 20):
         # Step1: Generate pseudo gt from teacher network
+        dist_print('Iteration %d Step 1: Generate pseudo gt from teacher network'%grandIterNum)
         net_teacher = net_teacher.cuda()
         genPseudoGt(net_teacher, pseudo_gen_loader, cfg.data_root,
                     "train_pseudo_gt.txt", "pseudo_clips_gt", grandIterNum)
         pseudo_annotated_loader, _ = getPseudoAnnotatedLoader(args,cfg)
         net_teacher = net_teacher.cpu()
 
+        dist_print('Iteration %d Step 2: Train student network with pseduo gt'%grandIterNum)
         # Step2: Train student network with pseduo gt
         net_student = net_student.cuda()
-        optmzr,scdulr,resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(net_student,pseudo_annotated_loader,args,cfg)
+        optmzr,scdulr,resume_epoch = getOptimizerAndSchedulerAndResumeEpoch('train_pseudo',net_student,pseudo_annotated_loader,args,cfg)
         bestMetrics, globalIter = train_proc(net_student, optmzr, scdulr, pseudo_annotated_loader,
                args, cfg, logger,bestMetrics, resume_epoch, grandIterNum)
 
         # Step3: Finetune student network with mannually annotated sample
-        optmzr,scdulr,resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(net_student,annotated_loader,args,cfg)
+        dist_print('Iteration %d Step 3: Finetune student network with mannually annotated sample'%grandIterNum)        
+        optmzr,scdulr,resume_epoch = getOptimizerAndSchedulerAndResumeEpoch('finetune',net_student,annotated_loader,args,cfg)
         bestMetrics, globalIter = train_proc(net_student, optmzr, scdulr, annotated_loader,
                args, cfg, logger,bestMetrics, resume_epoch, grandIterNum)
         net_student = net_student.cpu()
