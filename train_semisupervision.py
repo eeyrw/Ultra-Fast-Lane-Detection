@@ -252,7 +252,7 @@ if __name__ == "__main__":
             net, device_ids=[args.local_rank])
 
     # Step 0: Train a teacher net with mannually annotated sample
-    dist_print('Iteration %d Step 0: Train a teacher net with mannually annotated sample')
+    dist_print('Iteration 0 Step 0: Train a teacher net with mannually annotated sample')
 
     dist_print(len(annotated_loader))
     metric_dict = get_metric_dict(cfg)
