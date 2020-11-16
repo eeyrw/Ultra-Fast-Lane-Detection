@@ -274,7 +274,7 @@ if __name__ == "__main__":
         net_teacher = net_teacher.cuda()
         genPseudoGt(net_teacher, pseudo_gen_loader, cfg.data_root,
                     "train_pseudo_gt.txt", "pseudo_clips_gt", grandIterNum)
-        pseudo_annotated_loader = getPseudoAnnotatedLoader(args,cfg)
+        pseudo_annotated_loader, _ = getPseudoAnnotatedLoader(args,cfg)
         net_teacher = net_teacher.cpu()
 
         # Step2: Train student network with pseduo gt
