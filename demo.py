@@ -15,19 +15,19 @@ if __name__ == "__main__":
     args, cfg = merge_config()
 
     dist_print('start testing...')
-    assert cfg.backbone in ['18','34','50','101','152','50next','101next','50wide','101wide']
+    assert cfg.NETWORK.BACKBONE in ['18','34','50','101','152','50next','101next','50wide','101wide']
 
-    if cfg.dataset == 'CULane':
+    if cfg.DATASET.NAME == 'CULane':
         cls_num_per_lane = 18
-    elif cfg.dataset == 'Tusimple':
+    elif cfg.DATASET.NAME == 'Tusimple':
         cls_num_per_lane = 56
     else:
         raise NotImplementedError
 
-    net = parsingNet(pretrained = False, backbone=cfg.backbone,cls_dim = (cfg.griding_num+1,cls_num_per_lane,4),
+    net = parsingNet(pretrained = False, backbone=cfg.NETWORK.BACKBONE,cls_dim = (cfg.NETWORK.GRIDING_NUM+1,cls_num_per_lane,4),
                     use_aux=False).cuda() # we dont need auxiliary segmentation in testing
 
-    state_dict = torch.load(cfg.test_model, map_location='cpu')['model']
+    state_dict = torch.load(cfg.TEST.MODEL, map_location='cpu')['model']
     compatible_state_dict = {}
     for k, v in state_dict.items():
         if 'module.' in k:
@@ -43,14 +43,14 @@ if __name__ == "__main__":
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
-    if cfg.dataset == 'CULane':
+    if cfg.DATASET.NAME == 'CULane':
         splits = ['test0_normal.txt', 'test1_crowd.txt', 'test2_hlight.txt', 'test3_shadow.txt', 'test4_noline.txt', 'test5_arrow.txt', 'test6_curve.txt', 'test7_cross.txt', 'test8_night.txt']
-        datasets = [LaneTestDataset(cfg.data_root,os.path.join(cfg.data_root, 'list/test_split/'+split),img_transform = img_transforms) for split in splits]
+        datasets = [LaneTestDataset(cfg.DATASET.ROOT,os.path.join(cfg.DATASET.ROOT, 'list/test_split/'+split),img_transform = img_transforms) for split in splits]
         img_w, img_h = 1640, 590
         row_anchor = culane_row_anchor
-    elif cfg.dataset == 'Tusimple':
+    elif cfg.DATASET.NAME == 'Tusimple':
         splits = ['test.txt']
-        datasets = [LaneTestDataset(cfg.data_root,os.path.join(cfg.data_root, split),img_transform = img_transforms) for split in splits]
+        datasets = [LaneTestDataset(cfg.DATASET.ROOT,os.path.join(cfg.DATASET.ROOT, split),img_transform = img_transforms) for split in splits]
         img_w, img_h = 1280, 720
         row_anchor = tusimple_row_anchor
     else:
@@ -66,22 +66,22 @@ if __name__ == "__main__":
             with torch.no_grad():
                 out = net(imgs)
 
-            col_sample = np.linspace(0, 800 - 1, cfg.griding_num)
+            col_sample = np.linspace(0, 800 - 1, cfg.NETWORK.GRIDING_NUM)
             col_sample_w = col_sample[1] - col_sample[0]
 
 
             out_j = out[0].data.cpu().numpy()
             out_j = out_j[:, ::-1, :]
             prob = scipy.special.softmax(out_j[:-1, :, :], axis=0)
-            idx = np.arange(cfg.griding_num) + 1
+            idx = np.arange(cfg.NETWORK.GRIDING_NUM) + 1
             idx = idx.reshape(-1, 1, 1)
             loc = np.sum(prob * idx, axis=0)
             out_j = np.argmax(out_j, axis=0)
-            loc[out_j == cfg.griding_num] = 0
+            loc[out_j == cfg.NETWORK.GRIDING_NUM] = 0
             out_j = loc
 
             # import pdb; pdb.set_trace()
-            vis = cv2.imread(os.path.join(cfg.data_root,names[0]))
+            vis = cv2.imread(os.path.join(cfg.DATASET.ROOT,names[0]))
             for i in range(out_j.shape[1]):
                 if np.sum(out_j[:, i] != 0) > 2:
                     for k in range(out_j.shape[0]):

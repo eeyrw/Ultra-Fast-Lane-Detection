@@ -52,6 +52,9 @@ def get_args():
     parser.add_argument('--test_during_train', default = None, type = str2bool)
     return parser
 
+def merge_yacs_config():
+    raise NotImplementedError
+
 def merge_config():
     args = get_args().parse_args()
     cfg = Config.fromfile(args.config)
@@ -112,8 +115,8 @@ def cp_projects(to_path):
 import datetime, os
 def get_work_dir(cfg):
     now = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    hyper_param_str = '_lr_%1.0e_b_%d' % (cfg.learning_rate, cfg.batch_size)
-    work_dir = os.path.join(cfg.log_path, now + hyper_param_str + cfg.note)
+    hyper_param_str = '_lr_%1.0e_b_%d' % (cfg.TRAIN.LR, cfg.TRAIN.BATCH_SIZE)
+    work_dir = os.path.join(cfg.EXP.LOG_PATH, now + hyper_param_str + cfg.EXP.NOTE)
     return work_dir
 
 def get_logger(work_dir, cfg):

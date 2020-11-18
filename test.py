@@ -9,17 +9,17 @@ import torch
 if __name__ == "__main__":
     args, cfg = merge_config()
 
-    if cfg.dataset == 'CULane':
+    if cfg.DATASET.NAME == 'CULane':
         cls_num_per_lane = 18
-    elif cfg.dataset == 'Tusimple':
+    elif cfg.DATASET.NAME == 'Tusimple':
         cls_num_per_lane = 56
     else:
         raise NotImplementedError
 
-    net = parsingNet(pretrained = False, backbone=cfg.backbone,cls_dim = (cfg.griding_num+1,cls_num_per_lane, cfg.num_lanes),
+    net = parsingNet(pretrained = False, backbone=cfg.NETWORK.BACKBONE,cls_dim = (cfg.NETWORK.GRIDING_NUM+1,cls_num_per_lane, cfg.DATASET.NUM_LANES),
                     use_aux=False).cuda() # we dont need auxiliary segmentation in testing
 
-    state_dict = torch.load(cfg.test_model, map_location = 'cpu')['model']
+    state_dict = torch.load(cfg.TEST.MODEL, map_location = 'cpu')['model']
     compatible_state_dict = {}
     for k, v in state_dict.items():
         if 'module.' in k:

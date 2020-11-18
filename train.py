@@ -78,17 +78,17 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         reset_metrics(metric_dict)
 
         global_batch_step = (epoch * len(data_loader) + b_idx)
-        global_sample_iter = global_batch_step * cfg.batch_size
+        global_sample_iter = global_batch_step * cfg.TRAIN.BATCH_SIZE
 
         t_net_0 = time.time()
         results = inference(net, data_label, use_aux, load_name=True)
 
         if global_batch_step % 200 == 0:
-            if cfg.dataset == 'CULane':
+            if cfg.DATASET.NAME == 'CULane':
                 cls_num_per_lane = 18
                 img_w, img_h = 1640, 590
                 row_anchor = culane_row_anchor
-            elif cfg.dataset == 'Tusimple':
+            elif cfg.DATASET.NAME == 'Tusimple':
                 cls_num_per_lane = 56
                 img_w, img_h = 1280, 720
                 row_anchor = tusimple_row_anchor
@@ -99,7 +99,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
                              data_label[0][0],
                              results['cls_out'][0],
                              row_anchor,
-                             cfg.griding_num,
+                             cfg.NETWORK.GRIDING_NUM,
                              cls_num_per_lane,
                              results['seg_out'][0],
                              (img_h//2, img_w//2))
@@ -155,45 +155,45 @@ if __name__ == "__main__":
     dist_print(datetime.datetime.now().strftime(
         '[%Y/%m/%d %H:%M:%S]') + ' start training...')
     dist_print(cfg)
-    assert cfg.backbone in ['18', '34', '50', '101',
+    assert cfg.NETWORK.BACKBONE in ['18', '34', '50', '101',
                             '152', '50next', '101next', '50wide', '101wide']
 
     train_loader, cls_num_per_lane = get_train_loader(
-        cfg.batch_size, cfg.data_root,
-        cfg.griding_num, cfg.dataset,
-        cfg.use_aux, distributed,
-        cfg.num_lanes, cfg.train_ds_proportion,
+        cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
+        cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME,
+        cfg.NETWORK.USE_AUX, distributed,
+        cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION,
         load_name=True
     )
 
-    net = parsingNet(pretrained=True, backbone=cfg.backbone, cls_dim=(
-        cfg.griding_num+1, cls_num_per_lane, cfg.num_lanes), use_aux=cfg.use_aux, use_spp=cfg.use_spp).cuda()
+    net = parsingNet(pretrained=True, backbone=cfg.NETWORK.BACKBONE, cls_dim=(
+        cfg.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg.DATASET.NUM_LANES), use_aux=cfg.NETWORK.USE_AUX, use_spp=cfg.NETWORK.USE_SPP).cuda()
 
     if distributed:
         net = torch.nn.parallel.DistributedDataParallel(
             net, device_ids=[args.local_rank])
     optimizer = get_optimizer(net, cfg)
 
-    if cfg.finetune is not None:
-        dist_print('finetune from ', cfg.finetune)
-        state_all = torch.load(cfg.finetune)['model']
+    if cfg.EXP.FINETUNE is not None:
+        dist_print('finetune from ', cfg.EXP.FINETUNE)
+        state_all = torch.load(cfg.EXP.FINETUNE)['model']
         state_clip = {}  # only use backbone parameters
         for k, v in state_all.items():
             if 'model' in k:
                 state_clip[k] = v
         net.load_state_dict(state_clip, strict=False)
-    if cfg.resume is not None:
-        dist_print('==> Resume model from ' + cfg.resume)
-        resume_dict = torch.load(cfg.resume, map_location='cpu')
+    if cfg.EXP.RESUME is not None:
+        dist_print('==> Resume model from ' + cfg.EXP.RESUME)
+        resume_dict = torch.load(cfg.EXP.RESUME, map_location='cpu')
         net.load_state_dict(resume_dict['model'])
         if 'optimizer' in resume_dict.keys():
             optimizer.load_state_dict(resume_dict['optimizer'])
-        resume_epoch = int(os.path.split(cfg.resume)[1][2:5]) + 1
+        resume_epoch = int(os.path.split(cfg.EXP.RESUME)[1][2:5]) + 1
     else:
         resume_epoch = 0
 
     scheduler = get_scheduler(
-        optimizer, cfg, len(train_loader) * cfg.batch_size)
+        optimizer, cfg, len(train_loader) * cfg.TRAIN.BATCH_SIZE)
     dist_print(len(train_loader))
     metric_dict = get_metric_dict(cfg)
     loss_dict = get_loss_dict(cfg)
@@ -203,15 +203,15 @@ if __name__ == "__main__":
     bestMetrics = None
     logger.add_text('configuration', str(cfg))
 
-    for epoch in range(resume_epoch, cfg.epoch):
+    for epoch in range(resume_epoch, cfg.TRAIN.EPOCH):
 
         train(net, train_loader, loss_dict, optimizer, scheduler,
-              logger, epoch, metric_dict, cfg.use_aux, cfg, cls_num_per_lane)
+              logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, cls_num_per_lane)
         if cfg.test_during_train and (epoch % cfg.test_interval == 0):
             metricsDict, isBetter = testNet(
                 net, args, cfg, True, lastMetrics=bestMetrics)
             sampleIterAfterEpoch = (epoch+1) * \
-                len(train_loader) * cfg.batch_size
+                len(train_loader) * cfg.TRAIN.BATCH_SIZE
             for metricName, metricValue in metricsDict.items():
                 logger.add_scalar('test/'+metricName,
                                   metricValue, global_step=sampleIterAfterEpoch)

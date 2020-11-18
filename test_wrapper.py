@@ -19,14 +19,14 @@ def testNet(net, args, cfg, testWithAux, lastMetrics=None):
         torch.distributed.init_process_group(
             backend='nccl', init_method='env://')
     dist_print('start testing...')
-    assert cfg.backbone in ['18', '34', '50', '101',
+    assert cfg.NETWORK.BACKBONE in ['18', '34', '50', '101',
                             '152', '50next', '101next', '50wide', '101wide']
 
     if distributed:
         net = torch.nn.parallel.DistributedDataParallel(
             net, device_ids=[args.local_rank])
 
-    if not os.path.exists(cfg.test_work_dir):
-        os.mkdir(cfg.test_work_dir)
+    if not os.path.exists(cfg.TEST.WORK_DIR):
+        os.mkdir(cfg.TEST.WORK_DIR)
 
-    return eval_lane(net, cfg.dataset, cfg.data_root, cfg.test_work_dir, cfg.griding_num, testWithAux, distributed, lastMetrics=lastMetrics, proportion=cfg.test_ds_proportion)
+    return eval_lane(net, cfg.DATASET.NAME, cfg.DATASET.ROOT, cfg.TEST.WORK_DIR, cfg.NETWORK.GRIDING_NUM, testWithAux, distributed, lastMetrics=lastMetrics, proportion=cfg.DATASET.TEST_PROPORTION)

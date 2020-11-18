@@ -11,6 +11,8 @@ import numpy as np
 import torchvision.transforms as transforms
 from PIL import Image
 from data.constant import culane_row_anchor, tusimple_row_anchor, lane_index_colour
+from defaults import get_cfg_defaults  # local variable usage pattern, or:
+# from config import cfg  # global singleton usage pattern
 
 
 def resizeAndCropToTargetSize(img, width, height):
@@ -53,24 +55,24 @@ if __name__ == "__main__":
     args, cfg = merge_config()
 
     dist_print('start testing...')
-    assert cfg.backbone in ['18', '34', '50', '101',
+    assert cfg.NETWORK.BACKBONE in ['18', '34', '50', '101',
                             '152', '50next', '101next', '50wide', '101wide']
 
-    if cfg.dataset == 'CULane':
+    if cfg.DATASET.NAME == 'CULane':
         cls_num_per_lane = 18
         img_w, img_h = 1640, 590
         row_anchor = culane_row_anchor
-    elif cfg.dataset == 'Tusimple':
+    elif cfg.DATASET.NAME == 'Tusimple':
         cls_num_per_lane = 56
         img_w, img_h = 1280, 720
         row_anchor = tusimple_row_anchor
     else:
         raise NotImplementedError
 
-    net = parsingNet(pretrained=False, backbone=cfg.backbone, cls_dim=(cfg.griding_num+1, cls_num_per_lane, 4),
+    net = parsingNet(pretrained=False, backbone=cfg.NETWORK.BACKBONE, cls_dim=(cfg.NETWORK.GRIDING_NUM+1, cls_num_per_lane, 4),
                      use_aux=True).to(device)  # we dont need auxiliary segmentation in testing
 
-    state_dict = torch.load(cfg.test_model, map_location='cpu')['model']
+    state_dict = torch.load(cfg.TEST.MODEL, map_location='cpu')['model']
     compatible_state_dict = {}
     for k, v in state_dict.items():
         if 'module.' in k:
@@ -123,17 +125,17 @@ if __name__ == "__main__":
         imageBgrCV = cv2.addWeighted(imageBgrCV, 1, segImage, 0.7, 0.4)
 
 
-        col_sample = np.linspace(0, 800 - 1, cfg.griding_num)
+        col_sample = np.linspace(0, 800 - 1, cfg.NETWORK.GRIDING_NUM)
         col_sample_w = col_sample[1] - col_sample[0]
 
         out_j = out[0].data.cpu().numpy()
         out_j = out_j[:, ::-1, :]
         prob = scipy.special.softmax(out_j[:-1, :, :], axis=0)
-        idx = np.arange(cfg.griding_num) + 1
+        idx = np.arange(cfg.NETWORK.GRIDING_NUM) + 1
         idx = idx.reshape(-1, 1, 1)
         loc = np.sum(prob * idx, axis=0)
         out_j = np.argmax(out_j, axis=0)
-        loc[out_j == cfg.griding_num] = 0
+        loc[out_j == cfg.NETWORK.GRIDING_NUM] = 0
         out_j = loc
 
         for i in range(out_j.shape[1]):

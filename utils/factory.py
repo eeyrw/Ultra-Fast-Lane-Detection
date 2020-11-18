@@ -7,38 +7,38 @@ import torch
 
 def get_optimizer(net,cfg):
     training_params = filter(lambda p: p.requires_grad, net.parameters())
-    if cfg.optimizer == 'Adam':
-        optimizer = torch.optim.Adam(training_params, lr=cfg.learning_rate, weight_decay=cfg.weight_decay)
-    elif cfg.optimizer == 'SGD':
-        optimizer = torch.optim.SGD(training_params, lr=cfg.learning_rate, momentum=cfg.momentum,
-                                    weight_decay=cfg.weight_decay)
+    if cfg.TRAIN.OPTIMIZER == 'Adam':
+        optimizer = torch.optim.Adam(training_params, lr=cfg.TRAIN.LR, weight_decay=cfg.TRAIN.WEIGHT_DECAY)
+    elif cfg.TRAIN.OPTIMIZER == 'SGD':
+        optimizer = torch.optim.SGD(training_params, lr=cfg.TRAIN.LR, momentum=cfg.TRAIN.MOMENTUM,
+                                    weight_decay=cfg.TRAIN.WEIGHT_DECAY)
     else:
         raise NotImplementedError
     return optimizer
 
 def get_scheduler(optimizer, cfg, iters_per_epoch):
-    if cfg.scheduler == 'multi':
-        scheduler = MultiStepLR(optimizer, cfg.steps, cfg.gamma, iters_per_epoch, cfg.warmup, iters_per_epoch if cfg.warmup_iters is None else cfg.warmup_iters)
-    elif cfg.scheduler == 'cos':
-        scheduler = CosineAnnealingLR(optimizer, cfg.epoch * iters_per_epoch, eta_min = 0, warmup = cfg.warmup, warmup_iters = cfg.warmup_iters)
+    if cfg.TRAIN.SCHEDULER == 'multi':
+        scheduler = MultiStepLR(optimizer, cfg.TRAIN.STEPS, cfg.TRAIN.GAMMA, iters_per_epoch, cfg.TRAIN.WARMUP, iters_per_epoch if cfg.TRAIN.WARMUP_ITERS is None else cfg.TRAIN.WARMUP_ITERS)
+    elif cfg.TRAIN.SCHEDULER == 'cos':
+        scheduler = CosineAnnealingLR(optimizer, cfg.TRAIN.EPOCH * iters_per_epoch, eta_min = 0, warmup = cfg.TRAIN.WARMUP, warmup_iters = cfg.TRAIN.WARMUP_ITERS)
     else:
         raise NotImplementedError
     return scheduler
 
 def get_loss_dict(cfg):
 
-    if cfg.use_aux:
+    if cfg.NETWORK.USE_AUX:
         loss_dict = {
             'name': ['cls_loss', 'relation_loss', 'aux_loss', 'relation_dis'],
             'op': [SoftmaxFocalLoss(2), ParsingRelationLoss(), torch.nn.CrossEntropyLoss(), ParsingRelationDis()],
-            'weight': [1.0, cfg.sim_loss_w, 1.0, cfg.shp_loss_w],
+            'weight': [1.0, cfg.LOSS.SIM_LOSS_W, 1.0, cfg.LOSS.SHP_LOSS_W],
             'data_src': [('cls_out', 'cls_label'), ('cls_out',), ('seg_out', 'seg_label'), ('cls_out',)]
         }
     else:
         loss_dict = {
             'name': ['cls_loss', 'relation_loss', 'relation_dis'],
             'op': [SoftmaxFocalLoss(2), ParsingRelationLoss(), ParsingRelationDis()],
-            'weight': [1.0, cfg.sim_loss_w, cfg.shp_loss_w],
+            'weight': [1.0, cfg.LOSS.SIM_LOSS_W, cfg.LOSS.SHP_LOSS_W],
             'data_src': [('cls_out', 'cls_label'), ('cls_out',), ('cls_out',)]
         }
 
@@ -46,16 +46,16 @@ def get_loss_dict(cfg):
 
 def get_metric_dict(cfg):
 
-    if cfg.use_aux:
+    if cfg.NETWORK.USE_AUX:
         metric_dict = {
             'name': ['top1', 'top2', 'top3', 'iou'],
-            'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3), Metric_mIoU(cfg.num_lanes+1)],
+            'op': [MultiLabelAcc(), AccTopk(cfg.NETWORK.GRIDING_NUM, 2), AccTopk(cfg.NETWORK.GRIDING_NUM, 3), Metric_mIoU(cfg.DATASET.NUM_LANES+1)],
             'data_src': [('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('seg_out', 'seg_label')]
         }
     else:
         metric_dict = {
             'name': ['top1', 'top2', 'top3'],
-            'op': [MultiLabelAcc(), AccTopk(cfg.griding_num, 2), AccTopk(cfg.griding_num, 3)],
+            'op': [MultiLabelAcc(), AccTopk(cfg.NETWORK.GRIDING_NUM, 2), AccTopk(cfg.NETWORK.GRIDING_NUM, 3)],
             'data_src': [('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('cls_out', 'cls_label')]
         }
 
