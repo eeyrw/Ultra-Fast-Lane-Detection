@@ -85,13 +85,11 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         results = inference(net, data_label, use_aux, load_name=True)
 
         if global_batch_step % 200 == 0:
+            cls_num_per_lane = cfg.NETWORK.CLS_NUM_PER_LANE
+            img_w, img_h = cfg.DATASET.RAW_IMG_SIZE
             if cfg.DATASET.NAME == 'CULane':
-                cls_num_per_lane = 18
-                img_w, img_h = 1640, 590
                 row_anchor = culane_row_anchor
             elif cfg.DATASET.NAME == 'Tusimple':
-                cls_num_per_lane = 56
-                img_w, img_h = 1280, 720
                 row_anchor = tusimple_row_anchor
 
             logSegLabelImage(logger,
@@ -138,7 +136,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         t_data_0 = time.time()
 
 
-def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger,bestMetrics, resume_epoch, sampleIter):
+def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestMetrics, resume_epoch, sampleIter):
     for epoch in range(resume_epoch, cfg.TRAIN.EPOCH):
         train(net, train_loader, loss_dict, optimizer, scheduler,
               logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, cls_num_per_lane)
@@ -158,7 +156,7 @@ def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger,bestMe
     return bestMetrics, sampleIterAfterEpoch
 
 
-def recoveryState(net, optimizer, args, cfg):
+def recoveryState(net, optimizer, cfg):
     if cfg.EXP.FINETUNE is not None:
         dist_print('finetune from ', cfg.EXP.FINETUNE)
         state_all = torch.load(cfg.EXP.FINETUNE)['model']
@@ -181,7 +179,7 @@ def recoveryState(net, optimizer, args, cfg):
 
 
 def getVariousLoader(args, cfg):
-    train_loaders, cls_num_per_lane = get_train_loader(
+    train_loaders, _ = get_train_loader(
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME,
         cfg.NETWORK.USE_AUX, distributed,
@@ -200,23 +198,24 @@ def getVariousLoader(args, cfg):
     annotated_loader = train_loaders[0]
     pseudo_gen_loader = train_loaders_no_aug[1]
 
-    return annotated_loader, pseudo_gen_loader, cls_num_per_lane
+    return annotated_loader, pseudo_gen_loader
+
 
 def getPseudoAnnotatedLoader(args, cfg):
-    pseudo_annotated_loader, cls_num_per_lane = get_train_loader(
+    pseudo_annotated_loader, _ = get_train_loader(
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME+"-pseudo",
         cfg.NETWORK.USE_AUX, distributed,
         cfg.DATASET.NUM_LANES, load_name=True
     )
-    return  pseudo_annotated_loader, cls_num_per_lane
+    return pseudo_annotated_loader
 
-def getOptimizerAndSchedulerAndResumeEpoch(type, net,loader,args,cfg):
-    optimizer = get_optimizer(net, cfg)
-    resume_epoch = recoveryState(net, optimizer, args, cfg)
+def getOptimizerAndSchedulerAndResumeEpoch(paramSet, net, loader, cfg):
+    optimizer = get_optimizer(net, cfg, paramSet=paramSet)
+    resume_epoch = recoveryState(net, optimizer, cfg)
     scheduler = get_scheduler(
         optimizer, cfg, len(loader) * cfg.TRAIN.BATCH_SIZE)
-    return optimizer,scheduler,resume_epoch
+    return optimizer, scheduler, resume_epoch
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
@@ -237,9 +236,11 @@ if __name__ == "__main__":
         '[%Y/%m/%d %H:%M:%S]') + ' start training...')
     dist_print(cfg)
     assert cfg.NETWORK.BACKBONE in ['18', '34', '50', '101',
-                            '152', '50next', '101next', '50wide', '101wide']
+                                    '152', '50next', '101next', '50wide', '101wide']
 
-    annotated_loader, pseudo_gen_loader, cls_num_per_lane = getVariousLoader(
+    cls_num_per_lane = cfg.NETWORK.CLS_NUM_PER_LANE
+
+    annotated_loader, pseudo_gen_loader = getVariousLoader(
         args, cfg)
 
     net_teacher = parsingNet(pretrained=True, backbone=cfg.NETWORK.BACKBONE, cls_dim=(
@@ -252,7 +253,8 @@ if __name__ == "__main__":
             net, device_ids=[args.local_rank])
 
     # Step 0: Train a teacher net with mannually annotated sample
-    dist_print('Iteration 0 Step 0: Train a teacher net with mannually annotated sample')
+    dist_print(
+        'Iteration 0 Step 0: Train a teacher net with mannually annotated sample')
 
     dist_print(len(annotated_loader))
     metric_dict = get_metric_dict(cfg)
@@ -264,35 +266,40 @@ if __name__ == "__main__":
     logger.add_text('configuration', str(cfg))
 
     net_teacher = net_teacher.cuda()
-    optmzr,scdulr,resume_epoch = getOptimizerAndSchedulerAndResumeEpoch('train',net_teacher,annotated_loader,args,cfg)
+    optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
+        'TRAIN', net_teacher, annotated_loader, cfg)
     bestMetrics, globalIter = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
-               args, cfg, logger,bestMetrics, resume_epoch, 0)
+                                         args, cfg, logger, bestMetrics, resume_epoch, 0)
 
     for grandIterNum in range(1, 20):
         # Step1: Generate pseudo gt from teacher network
-        dist_print('Iteration %d Step 1: Generate pseudo gt from teacher network'%grandIterNum)
+        dist_print(
+            'Iteration %d Step 1: Generate pseudo gt from teacher network' % grandIterNum)
         net_teacher = net_teacher.cuda()
         genPseudoGt(net_teacher, pseudo_gen_loader, cfg.DATASET.ROOT,
                     "train_pseudo_gt.txt", "pseudo_clips_gt", grandIterNum)
-        pseudo_annotated_loader, _ = getPseudoAnnotatedLoader(args,cfg)
+        pseudo_annotated_loader, _ = getPseudoAnnotatedLoader(args, cfg)
         net_teacher = net_teacher.cpu()
 
-        dist_print('Iteration %d Step 2: Train student network with pseduo gt'%grandIterNum)
+        dist_print(
+            'Iteration %d Step 2: Train student network with pseduo gt' % grandIterNum)
         # Step2: Train student network with pseduo gt
         net_student = net_student.cuda()
-        optmzr,scdulr,resume_epoch = getOptimizerAndSchedulerAndResumeEpoch('train_pseudo',net_student,pseudo_annotated_loader,args,cfg)
+        optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
+            'TRAIN_PSEUDO', net_student, pseudo_annotated_loader, cfg)
         bestMetrics, globalIter = train_proc(net_student, optmzr, scdulr, pseudo_annotated_loader,
-               args, cfg, logger,bestMetrics, resume_epoch, grandIterNum)
+                                             args, cfg, logger, bestMetrics, resume_epoch, grandIterNum)
 
         # Step3: Finetune student network with mannually annotated sample
-        dist_print('Iteration %d Step 3: Finetune student network with mannually annotated sample'%grandIterNum)        
-        optmzr,scdulr,resume_epoch = getOptimizerAndSchedulerAndResumeEpoch('finetune',net_student,annotated_loader,args,cfg)
+        dist_print(
+            'Iteration %d Step 3: Finetune student network with mannually annotated sample' % grandIterNum)
+        optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
+            'TRAIN_FINETUNE', net_student, annotated_loader, cfg)
         bestMetrics, globalIter = train_proc(net_student, optmzr, scdulr, annotated_loader,
-               args, cfg, logger,bestMetrics, resume_epoch, grandIterNum)
+                                             args, cfg, logger, bestMetrics, resume_epoch, grandIterNum)
         net_student = net_student.cpu()
 
-        #Exchange network
-        net_teacher, net_student = net_student , net_teacher
-
+        # Exchange network
+        net_teacher, net_student = net_student, net_teacher
 
     logger.close()

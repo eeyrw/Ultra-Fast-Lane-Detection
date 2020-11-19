@@ -32,6 +32,7 @@ def resizeAndCropToTargetSize(img, width, height):
             crop((0, (heightBeforeCrop-height)//2, width,
                   (heightBeforeCrop-height)//2+height))
 
+
 videos = [r"C:\Users\yuan\Documents\MS-Project\LDW Research\highway45.mp4",
           r"C:\Users\yuan\Documents\MS-Project\LDW Research\Mitsubishi Evo VIII MR - Forza Horizon 4 _ Logitech g29 gameplay.mp4",
           r"C:\Users\yuan\Desktop\lane-detector-master\REC073.mp4",
@@ -56,20 +57,18 @@ if __name__ == "__main__":
 
     dist_print('start testing...')
     assert cfg.NETWORK.BACKBONE in ['18', '34', '50', '101',
-                            '152', '50next', '101next', '50wide', '101wide']
+                                    '152', '50next', '101next', '50wide', '101wide']
 
     if cfg.DATASET.NAME == 'CULane':
-        cls_num_per_lane = 18
-        img_w, img_h = 1640, 590
         row_anchor = culane_row_anchor
     elif cfg.DATASET.NAME == 'Tusimple':
-        cls_num_per_lane = 56
-        img_w, img_h = 1280, 720
         row_anchor = tusimple_row_anchor
     else:
         raise NotImplementedError
 
-    net = parsingNet(pretrained=False, backbone=cfg.NETWORK.BACKBONE, cls_dim=(cfg.NETWORK.GRIDING_NUM+1, cls_num_per_lane, 4),
+    img_w, img_h = cfg.DATASET.RAW_IMG_SIZE
+
+    net = parsingNet(pretrained=False, backbone=cfg.NETWORK.BACKBONE, cls_dim=(cfg.NETWORK.GRIDING_NUM+1, cfg.NETWORK.CLS_NUM_PER_LANE, 4),
                      use_aux=True).to(device)  # we dont need auxiliary segmentation in testing
 
     state_dict = torch.load(cfg.TEST.MODEL, map_location='cpu')['model']
@@ -89,7 +88,7 @@ if __name__ == "__main__":
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
-    videFilePath = videos[6]  #'rain.mp4'
+    videFilePath = videos[6]  # 'rain.mp4'
     writeToVideo = False
 
     cap = cv2.VideoCapture(videFilePath)
@@ -114,16 +113,18 @@ if __name__ == "__main__":
             out = net(imgs)
 
         out, segOutput = out
-        segOutput=segOutput[0]
+        segOutput = segOutput[0]
         # segOutput: [class,h,w]
-        segOutput = torch.unsqueeze(torch.unsqueeze(torch.argmax(torch.sigmoid(segOutput),dim=0), 0), 0)
+        segOutput = torch.unsqueeze(torch.unsqueeze(
+            torch.argmax(torch.sigmoid(segOutput), dim=0), 0), 0)
         # segOutput: [1,1,h,w]
-        plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(segOutput.float(),size=(img_h,img_w))).byte().cpu().numpy()
+        plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(
+            segOutput.float(), size=(img_h, img_w))).byte().cpu().numpy()
 
-        colorMapMat = np.array(lane_index_colour,dtype=np.uint8)[...,::-1] # RGB to BGR
+        colorMapMat = np.array(
+            lane_index_colour, dtype=np.uint8)[..., ::-1]  # RGB to BGR
         segImage = colorMapMat[plainSegOutput]
         imageBgrCV = cv2.addWeighted(imageBgrCV, 1, segImage, 0.7, 0.4)
-
 
         col_sample = np.linspace(0, 800 - 1, cfg.NETWORK.GRIDING_NUM)
         col_sample_w = col_sample[1] - col_sample[0]
@@ -144,8 +145,10 @@ if __name__ == "__main__":
                     if out_j[k, i] > 0:
                         ppp = (int(out_j[k, i] * col_sample_w * img_w / 800) - 1,
                                int(img_h * (row_anchor[cls_num_per_lane-1-k]/288)) - 1)
-                        cv2.circle(imageBgrCV, ppp, 8, lane_index_colour[0][::-1], -1)
-                        cv2.circle(imageBgrCV, ppp, 5, lane_index_colour[i+1][::-1], -1)
+                        cv2.circle(imageBgrCV, ppp, 8,
+                                   lane_index_colour[0][::-1], -1)
+                        cv2.circle(imageBgrCV, ppp, 5,
+                                   lane_index_colour[i+1][::-1], -1)
 
         if writeToVideo:
             vout.write(imageBgrCV)

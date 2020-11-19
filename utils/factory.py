@@ -5,25 +5,30 @@ from utils.dist_utils import DistSummaryWriter
 import torch
 
 
-def get_optimizer(net,cfg):
+def get_optimizer(net, cfg, paramSet='TRAIN'):
     training_params = filter(lambda p: p.requires_grad, net.parameters())
-    if cfg.TRAIN.OPTIMIZER == 'Adam':
-        optimizer = torch.optim.Adam(training_params, lr=cfg.TRAIN.LR, weight_decay=cfg.TRAIN.WEIGHT_DECAY)
-    elif cfg.TRAIN.OPTIMIZER == 'SGD':
-        optimizer = torch.optim.SGD(training_params, lr=cfg.TRAIN.LR, momentum=cfg.TRAIN.MOMENTUM,
-                                    weight_decay=cfg.TRAIN.WEIGHT_DECAY)
+    if cfg[paramSet]['OPTIMIZER'] == 'Adam':
+        optimizer = torch.optim.Adam(
+            training_params, lr=cfg[paramSet]['LR'], weight_decay=cfg[paramSet]['WEIGHT_DECAY'])
+    elif cfg[paramSet]['OPTIMIZER'] == 'SGD':
+        optimizer = torch.optim.SGD(training_params, lr=cfg[paramSet]['LR'], momentum=cfg[paramSet]['MOMENTUM'],
+                                    weight_decay=cfg[paramSet]['WEIGHT_DECAY'])
     else:
         raise NotImplementedError
     return optimizer
 
-def get_scheduler(optimizer, cfg, iters_per_epoch):
-    if cfg.TRAIN.SCHEDULER == 'multi':
-        scheduler = MultiStepLR(optimizer, cfg.TRAIN.STEPS, cfg.TRAIN.GAMMA, iters_per_epoch, cfg.TRAIN.WARMUP, iters_per_epoch if cfg.TRAIN.WARMUP_ITERS is None else cfg.TRAIN.WARMUP_ITERS)
-    elif cfg.TRAIN.SCHEDULER == 'cos':
-        scheduler = CosineAnnealingLR(optimizer, cfg.TRAIN.EPOCH * iters_per_epoch, eta_min = 0, warmup = cfg.TRAIN.WARMUP, warmup_iters = cfg.TRAIN.WARMUP_ITERS)
+
+def get_scheduler(optimizer, cfg, iters_per_epoch, paramSet='TRAIN'):
+    if cfg[paramSet]['SCHEDULER'] == 'multi':
+        scheduler = MultiStepLR(optimizer, cfg[paramSet]['STEPS'], cfg[paramSet]['GAMMA'], iters_per_epoch, cfg[paramSet]
+                                ['WARMUP'], iters_per_epoch if cfg[paramSet]['WARMUP_ITERS'] is None else cfg[paramSet]['WARMUP_ITERS'])
+    elif cfg[paramSet]['SCHEDULER'] == 'cos':
+        scheduler = CosineAnnealingLR(optimizer, cfg[paramSet]['EPOCH'] * iters_per_epoch, eta_min=0,
+                                      warmup=cfg[paramSet]['WARMUP_ITERS'], warmup_iters=cfg[paramSet]['WARMUP_ITERS'])
     else:
         raise NotImplementedError
     return scheduler
+
 
 def get_loss_dict(cfg):
 
@@ -44,6 +49,7 @@ def get_loss_dict(cfg):
 
     return loss_dict
 
+
 def get_metric_dict(cfg):
 
     if cfg.NETWORK.USE_AUX:
@@ -59,12 +65,11 @@ def get_metric_dict(cfg):
             'data_src': [('cls_out', 'cls_label'), ('cls_out', 'cls_label'), ('cls_out', 'cls_label')]
         }
 
-    
     return metric_dict
 
 
 class MultiStepLR:
-    def __init__(self, optimizer, steps, gamma = 0.1, iters_per_epoch = None, warmup = None, warmup_iters = None):
+    def __init__(self, optimizer, steps, gamma=0.1, iters_per_epoch=None, warmup=None, warmup_iters=None):
         self.warmup = warmup
         self.warmup_iters = warmup_iters
         self.optimizer = optimizer
@@ -75,7 +80,7 @@ class MultiStepLR:
         self.iters = 0
         self.base_lr = [group['lr'] for group in optimizer.param_groups]
 
-    def step(self, external_iter = None):
+    def step(self, external_iter=None):
         self.iters += 1
         if external_iter is not None:
             self.iters = external_iter
@@ -84,7 +89,7 @@ class MultiStepLR:
             for group, lr in zip(self.optimizer.param_groups, self.base_lr):
                 group['lr'] = lr * rate
             return
-        
+
         # multi policy
         if self.iters % self.iters_per_epoch == 0:
             epoch = int(self.iters / self.iters_per_epoch)
@@ -96,12 +101,16 @@ class MultiStepLR:
             if power == -1:
                 power = len(self.steps)
             # print(self.iters, self.iters_per_epoch, self.steps, power)
-            
+
             for group, lr in zip(self.optimizer.param_groups, self.base_lr):
                 group['lr'] = lr * (self.gamma ** power)
+
+
 import math
+
+
 class CosineAnnealingLR:
-    def __init__(self, optimizer, T_max , eta_min = 0, warmup = None, warmup_iters = None):
+    def __init__(self, optimizer, T_max, eta_min=0, warmup=None, warmup_iters=None):
         self.warmup = warmup
         self.warmup_iters = warmup_iters
         self.optimizer = optimizer
@@ -111,7 +120,7 @@ class CosineAnnealingLR:
         self.iters = 0
         self.base_lr = [group['lr'] for group in optimizer.param_groups]
 
-    def step(self, external_iter = None):
+    def step(self, external_iter=None):
         self.iters += 1
         if external_iter is not None:
             self.iters = external_iter
@@ -120,10 +129,9 @@ class CosineAnnealingLR:
             for group, lr in zip(self.optimizer.param_groups, self.base_lr):
                 group['lr'] = lr * rate
             return
-        
+
         # cos policy
 
         for group, lr in zip(self.optimizer.param_groups, self.base_lr):
-            group['lr'] = self.eta_min + (lr - self.eta_min) * (1 + math.cos(math.pi * self.iters / self.T_max)) / 2
-
-        
+            group['lr'] = self.eta_min + (lr - self.eta_min) * \
+                (1 + math.cos(math.pi * self.iters / self.T_max)) / 2

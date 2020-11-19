@@ -17,14 +17,7 @@ if __name__ == "__main__":
     dist_print('start testing...')
     assert cfg.NETWORK.BACKBONE in ['18','34','50','101','152','50next','101next','50wide','101wide']
 
-    if cfg.DATASET.NAME == 'CULane':
-        cls_num_per_lane = 18
-    elif cfg.DATASET.NAME == 'Tusimple':
-        cls_num_per_lane = 56
-    else:
-        raise NotImplementedError
-
-    net = parsingNet(pretrained = False, backbone=cfg.NETWORK.BACKBONE,cls_dim = (cfg.NETWORK.GRIDING_NUM+1,cls_num_per_lane,4),
+    net = parsingNet(pretrained = False, backbone=cfg.NETWORK.BACKBONE,cls_dim = (cfg.NETWORK.GRIDING_NUM+1,cfg.NETWORK.CLS_NUM_PER_LANE,4),
                     use_aux=False).cuda() # we dont need auxiliary segmentation in testing
 
     state_dict = torch.load(cfg.TEST.MODEL, map_location='cpu')['model']
