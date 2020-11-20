@@ -51,7 +51,7 @@ def resolve_val_data(results, use_aux):
     return results
 
 
-def calc_loss(loss_dict, results, logger, global_step):
+def calc_loss(loss_dict, results, logger, global_step, grandIter):
     loss = 0
 
     for i in range(len(loss_dict['name'])):
@@ -64,13 +64,13 @@ def calc_loss(loss_dict, results, logger, global_step):
 
         if global_step % 20 == 0:
             logger.add_scalar(
-                'loss/'+loss_dict['name'][i], loss_cur, global_step)
+                'loss_%s/%s_%d' % (loss_dict['name'][i], loss_dict['name'][i], grandIter), loss_cur, global_step)
 
         loss += loss_cur * loss_dict['weight'][i]
     return loss
 
 
-def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metric_dict, use_aux, cfg, cls_num_per_lane):
+def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metric_dict, use_aux, cfg, grandIter):
     net.train()
     progress_bar = dist_tqdm(data_loader)
     t_data_0 = time.time()
@@ -103,7 +103,8 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
                              results['seg_out'][0],
                              (img_h//2, img_w//2))
 
-        loss = calc_loss(loss_dict, results, logger, global_sample_iter)
+        loss = calc_loss(loss_dict, results, logger,
+                         global_sample_iter, grandIter)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -115,14 +116,14 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         update_metrics(metric_dict, results)
 
         logger.add_scalar(
-            'meta/epoch', epoch, global_sample_iter)
+            'meta_epoch/epoch_%d' % grandIter, epoch, global_sample_iter)
 
         if global_batch_step % 20 == 0:
             for me_name, me_op in zip(metric_dict['name'], metric_dict['op']):
-                logger.add_scalar('metric/' + me_name,
+                logger.add_scalar('metric_%s/%s_%d' % (me_name, me_name, grandIter),
                                   me_op.get(), global_step=global_sample_iter)
         logger.add_scalar(
-            'meta/lr', optimizer.param_groups[0]['lr'], global_step=global_sample_iter)
+            'meta_lr/lr_%d' % grandIter, optimizer.param_groups[0]['lr'], global_step=global_sample_iter)
 
         if hasattr(progress_bar, 'set_postfix'):
             kwargs = {me_name: '%.3f' % me_op.get() for me_name, me_op in zip(
@@ -136,17 +137,17 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         t_data_0 = time.time()
 
 
-def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestMetrics, resume_epoch, sampleIter):
+def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestMetrics, resume_epoch, grandIter):
     for epoch in range(resume_epoch, cfg.TRAIN.EPOCH):
         train(net, train_loader, loss_dict, optimizer, scheduler,
-              logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, cls_num_per_lane)
+              logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, grandIter)
         if cfg.test_during_train and (epoch % cfg.test_interval == 0):
             metricsDict, isBetter = testNet(
                 net, args, cfg, True, lastMetrics=bestMetrics)
             sampleIterAfterEpoch = (epoch+1) * \
-                len(train_loader) * cfg.TRAIN.BATCH_SIZE + sampleIter
+                len(train_loader) * cfg.TRAIN.BATCH_SIZE
             for metricName, metricValue in metricsDict.items():
-                logger.add_scalar('test/'+metricName,
+                logger.add_scalar('test_%s/%s_%d' % (metricName, metricName, grandIter),
                                   metricValue, global_step=sampleIterAfterEpoch)
             if isBetter:
                 bestMetrics = metricsDict
@@ -270,7 +271,7 @@ if __name__ == "__main__":
     net_teacher = net_teacher.cuda()
     optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
         'TRAIN', net_teacher, annotated_loader, cfg)
-    bestMetrics, globalIter = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
+    bestMetrics, _ = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
                                          args, cfg, logger, bestMetrics, resume_epoch, 0)
 
     for grandIterNum in range(1, 20):
@@ -289,7 +290,7 @@ if __name__ == "__main__":
         net_student = net_student.cuda()
         optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
             'TRAIN_PSEUDO', net_student, pseudo_annotated_loader, cfg)
-        bestMetrics, globalIter = train_proc(net_student, optmzr, scdulr, pseudo_annotated_loader,
+        bestMetrics, _ = train_proc(net_student, optmzr, scdulr, pseudo_annotated_loader,
                                              args, cfg, logger, bestMetrics, resume_epoch, grandIterNum)
 
         # Step3: Finetune student network with mannually annotated sample
@@ -297,7 +298,7 @@ if __name__ == "__main__":
             'Iteration %d Step 3: Finetune student network with mannually annotated sample' % grandIterNum)
         optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
             'TRAIN_FINETUNE', net_student, annotated_loader, cfg)
-        bestMetrics, globalIter = train_proc(net_student, optmzr, scdulr, annotated_loader,
+        bestMetrics, _ = train_proc(net_student, optmzr, scdulr, annotated_loader,
                                              args, cfg, logger, bestMetrics, resume_epoch, grandIterNum)
         net_student = net_student.cpu()
 
