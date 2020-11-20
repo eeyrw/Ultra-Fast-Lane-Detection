@@ -156,14 +156,14 @@ if __name__ == "__main__":
         '[%Y/%m/%d %H:%M:%S]') + ' start training...')
     dist_print(cfg)
     assert cfg.NETWORK.BACKBONE in ['res18', 'res34', 'res50', 'res101',
-                            'res152', '50next', '101next', '50wide', '101wide']
+                                    'res152', '50next', '101next', '50wide', '101wide']
 
     train_loader, cls_num_per_lane = get_train_loader(
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME,
         cfg.NETWORK.USE_AUX, distributed,
         cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION,
-        load_name=True
+        load_name=True,pin_memory=cfg.DATASET.PIN_MEMORY
     )
 
     net = parsingNet(pretrained=True, backbone=cfg.NETWORK.BACKBONE, cls_dim=(

@@ -184,7 +184,7 @@ def getVariousLoader(args, cfg):
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME,
         cfg.NETWORK.USE_AUX, distributed,
         cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True, split_proportion=0.3,
-        load_name=True
+        load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY
     )
 
     train_loaders_no_aug, _ = get_train_loader(
@@ -192,7 +192,7 @@ def getVariousLoader(args, cfg):
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME+'-no-aug',
         cfg.NETWORK.USE_AUX, distributed,
         cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True, split_proportion=0.3,
-        load_name=True
+        load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY
     )
 
     annotated_loader = train_loaders[0]
@@ -206,9 +206,10 @@ def getPseudoAnnotatedLoader(args, cfg):
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME+"-pseudo",
         cfg.NETWORK.USE_AUX, distributed,
-        cfg.DATASET.NUM_LANES, load_name=True
+        cfg.DATASET.NUM_LANES, load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY
     )
     return pseudo_annotated_loader
+
 
 def getOptimizerAndSchedulerAndResumeEpoch(paramSet, net, loader, cfg):
     optimizer = get_optimizer(net, cfg, paramSet=paramSet)
@@ -216,6 +217,7 @@ def getOptimizerAndSchedulerAndResumeEpoch(paramSet, net, loader, cfg):
     scheduler = get_scheduler(
         optimizer, cfg, len(loader) * cfg.TRAIN.BATCH_SIZE)
     return optimizer, scheduler, resume_epoch
+
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
