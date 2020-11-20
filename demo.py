@@ -1,6 +1,6 @@
 import torch, os, cv2
 from model.model import parsingNet
-from utils.common import merge_config
+from utils.common import merge_yacs_config
 from utils.dist_utils import dist_print
 import torch
 import scipy.special, tqdm
@@ -12,10 +12,10 @@ from data.constant import culane_row_anchor, tusimple_row_anchor
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
 
-    args, cfg = merge_config()
+    args, cfg = merge_yacs_config()
 
     dist_print('start testing...')
-    assert cfg.NETWORK.BACKBONE in ['18','34','50','101','152','50next','101next','50wide','101wide']
+    assert cfg.NETWORK.BACKBONE in ['res18','res34','res50','res101','res152','50next','101next','50wide','101wide']
 
     net = parsingNet(pretrained = False, backbone=cfg.NETWORK.BACKBONE,cls_dim = (cfg.NETWORK.GRIDING_NUM+1,cfg.NETWORK.CLS_NUM_PER_LANE,4),
                     use_aux=False).cuda() # we dont need auxiliary segmentation in testing

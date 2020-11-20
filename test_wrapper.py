@@ -1,7 +1,7 @@
 import torch
 import os
 from model.model import parsingNet
-from utils.common import merge_config
+from utils.common import merge_yacs_config
 from utils.dist_utils import dist_print
 from evaluation.eval_wrapper import eval_lane
 import torch
@@ -19,8 +19,8 @@ def testNet(net, args, cfg, testWithAux, lastMetrics=None):
         torch.distributed.init_process_group(
             backend='nccl', init_method='env://')
     dist_print('start testing...')
-    assert cfg.NETWORK.BACKBONE in ['18', '34', '50', '101',
-                            '152', '50next', '101next', '50wide', '101wide']
+    assert cfg.NETWORK.BACKBONE in ['res18', 'res34', 'res50', 'res101',
+                            'res152', '50next', '101next', '50wide', '101wide']
 
     if distributed:
         net = torch.nn.parallel.DistributedDataParallel(

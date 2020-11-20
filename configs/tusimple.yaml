@@ -1,0 +1,31 @@
+DATASET:
+  NAME: 'Tusimple'
+  ROOT: 'E:/Tusimple'
+  RAW_IMG_SIZE: [1280, 720] #w,h
+  TRAIN_PROPORTION: 1
+  TEST_PROPORTION: 1
+  NUM_LANES: 4
+
+TRAIN:
+  EPOCH: 30
+  BATCH_SIZE: 28 # 28 for 8GB 128 for 32GB
+  OPTIMIZER: 'Adam'  #['SGD','Adam']
+  LR: 1e-3
+  WEIGHT_DECAY: 1e-4
+  MOMENTUM: 0.9
+  SCHEDULER: 'multi'  #['multi', 'cos']
+  STEPS: [10,20]
+  GAMMA: 0.1
+  WARMUP: 'linear'
+  WARMUP_ITERS: 500  
+
+NETWORK:
+  BACKBONE: 'res18'
+  GRIDING_NUM: 100
+  CLS_NUM_PER_LANE: 56 #Tusimple:56 CULane:18
+  USE_AUX: True
+  USE_SPP: False
+
+LOSS:
+  SIM_LOSS_W: 1.0
+  SHP_LOSS_W: 0.0

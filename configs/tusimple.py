@@ -21,7 +21,7 @@ warmup = 'linear'
 warmup_iters = 500 #sample iteration
 
 # NETWORK
-backbone = '18'
+backbone = 'res18'
 griding_num = 100
 use_aux = True
 use_spp = True

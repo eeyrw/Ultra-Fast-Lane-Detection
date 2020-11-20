@@ -3,6 +3,7 @@ from utils.dist_utils import is_main_process, dist_print, DistSummaryWriter
 from utils.config import Config
 import torch
 from shutil import copyfile
+from defaults import get_cfg_defaults
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -52,8 +53,19 @@ def get_args():
     parser.add_argument('--test_during_train', default = None, type = str2bool)
     return parser
 
-def merge_yacs_config():
-    raise NotImplementedError
+def merge_yacs_config(overrideOpts=''):
+    cfg = get_cfg_defaults()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('config', help = 'path to config file')
+    parser.add_argument('--local_rank', type=int, default=0)
+    if overrideOpts!='':
+        argsKnown,argsUNKnown= parser.parse_known_args(overrideOpts)
+    else:
+        argsKnown,argsUNKnown= parser.parse_known_args()
+    cfg.merge_from_file(argsKnown.config)
+    cfg.merge_from_list(argsUNKnown)
+    cfg.freeze()
+    return argsKnown, cfg
 
 def merge_config():
     args = get_args().parse_args()

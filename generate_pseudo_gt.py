@@ -110,7 +110,7 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError
 
-    net = parsingNet(pretrained=False, backbone='18', cls_dim=(griding_num+1, cls_num_per_lane, 4),
+    net = parsingNet(pretrained=False, backbone='res18', cls_dim=(griding_num+1, cls_num_per_lane, 4),
                      use_aux=True).to(device)  # we dont need auxiliary segmentation in testing
 
     state_dict = torch.load(r"..\log\tusimple_b128_ep099.pth", map_location='cpu')['model']

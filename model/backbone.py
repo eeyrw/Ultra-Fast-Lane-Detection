@@ -14,15 +14,15 @@ class vgg16bn(torch.nn.Module):
 class resnet(torch.nn.Module):
     def __init__(self,layers,pretrained = False):
         super(resnet,self).__init__()
-        if layers == '18':
+        if layers == 'res18':
             model = torchvision.models.resnet18(pretrained=pretrained)
-        elif layers == '34':
+        elif layers == 'res34':
             model = torchvision.models.resnet34(pretrained=pretrained)
-        elif layers == '50':
+        elif layers == 'res50':
             model = torchvision.models.resnet50(pretrained=pretrained)
-        elif layers == '101':
+        elif layers == 'res101':
             model = torchvision.models.resnet101(pretrained=pretrained)
-        elif layers == '152':
+        elif layers == 'res152':
             model = torchvision.models.resnet152(pretrained=pretrained)
         elif layers == '50next':
             model = torchvision.models.resnext50_32x4d(pretrained=pretrained)

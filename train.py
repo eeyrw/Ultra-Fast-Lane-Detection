@@ -10,7 +10,7 @@ from utils.dist_utils import dist_print, dist_tqdm, is_main_process, DistSummary
 from utils.factory import get_metric_dict, get_loss_dict, get_optimizer, get_scheduler
 from utils.metrics import MultiLabelAcc, AccTopk, Metric_mIoU, update_metrics, reset_metrics
 
-from utils.common import merge_config, save_model, save_best_model, cp_projects
+from utils.common import merge_yacs_config, save_model, save_best_model, cp_projects
 from utils.common import get_work_dir, get_logger
 
 from test_wrapper import testNet
@@ -140,7 +140,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
 
-    args, cfg = merge_config()
+    args, cfg = merge_yacs_config()
 
     work_dir = get_work_dir(cfg)
 
@@ -155,8 +155,8 @@ if __name__ == "__main__":
     dist_print(datetime.datetime.now().strftime(
         '[%Y/%m/%d %H:%M:%S]') + ' start training...')
     dist_print(cfg)
-    assert cfg.NETWORK.BACKBONE in ['18', '34', '50', '101',
-                            '152', '50next', '101next', '50wide', '101wide']
+    assert cfg.NETWORK.BACKBONE in ['res18', 'res34', 'res50', 'res101',
+                            'res152', '50next', '101next', '50wide', '101wide']
 
     train_loader, cls_num_per_lane = get_train_loader(
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,

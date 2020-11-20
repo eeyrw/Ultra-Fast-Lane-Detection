@@ -23,7 +23,7 @@ warmup_iters = 21000 #sample iteration
 use_aux = True
 use_spp = True
 griding_num = 200
-backbone = '18'
+backbone = 'res18'
 
 # LOSS
 sim_loss_w = 0.0

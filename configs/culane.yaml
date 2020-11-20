@@ -1,0 +1,31 @@
+DATASET:
+  NAME: 'CULane'
+  ROOT: 'E:/CULane'
+  RAW_IMG_SIZE: [1640, 590] #w,h
+  TRAIN_PROPORTION: 1.0
+  TEST_PROPORTION: 1.0
+  NUM_LANES: 4
+
+TRAIN:
+  EPOCH: 50
+  BATCH_SIZE: 32 # 32 for 8GB 128 for 32GB
+  OPTIMIZER: 'SGD'  #['SGD','Adam']
+  LR: 1e-1
+  WEIGHT_DECAY: 1e-4
+  MOMENTUM: 0.9
+  SCHEDULER: 'multi'  #['multi', 'cos']
+  STEPS: [25,38]
+  GAMMA: 0.1
+  WARMUP: 'linear'
+  WARMUP_ITERS: 21000 #sample iteration
+
+NETWORK:
+  BACKBONE: 'res18'
+  GRIDING_NUM: 200
+  CLS_NUM_PER_LANE: 18 #Tusimple:56 CULane:18
+  USE_AUX: True
+  USE_SPP: False
+
+LOSS:
+  SIM_LOSS_W: 0.0
+  SHP_LOSS_W: 0.0

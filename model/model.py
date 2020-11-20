@@ -17,7 +17,7 @@ class conv_bn_relu(torch.nn.Module):
         x = self.relu(x)
         return x
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_aux=False, use_spp=False):
+    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', cls_dim=(37, 10, 4), use_aux=False, use_spp=False):
         super(parsingNet, self).__init__()
 
         self.size = size
@@ -35,18 +35,18 @@ class parsingNet(torch.nn.Module):
 
         if self.use_aux:
             self.aux_header2 = torch.nn.Sequential(
-                conv_bn_relu(128, 128, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(512, 128, kernel_size=3, stride=1, padding=1),
+                conv_bn_relu(128, 128, kernel_size=3, stride=1, padding=1) if backbone in ['res34','res18'] else conv_bn_relu(512, 128, kernel_size=3, stride=1, padding=1),
                 conv_bn_relu(128,128,3,padding=1),
                 conv_bn_relu(128,128,3,padding=1),
                 conv_bn_relu(128,128,3,padding=1),
             )
             self.aux_header3 = torch.nn.Sequential(
-                conv_bn_relu(256, 128, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(1024, 128, kernel_size=3, stride=1, padding=1),
+                conv_bn_relu(256, 128, kernel_size=3, stride=1, padding=1) if backbone in ['res34','res18'] else conv_bn_relu(1024, 128, kernel_size=3, stride=1, padding=1),
                 conv_bn_relu(128,128,3,padding=1),
                 conv_bn_relu(128,128,3,padding=1),
             )
             self.aux_header4 = torch.nn.Sequential(
-                conv_bn_relu(512, 128, kernel_size=3, stride=1, padding=1) if backbone in ['34','18'] else conv_bn_relu(2048, 128, kernel_size=3, stride=1, padding=1),
+                conv_bn_relu(512, 128, kernel_size=3, stride=1, padding=1) if backbone in ['res34','res18'] else conv_bn_relu(2048, 128, kernel_size=3, stride=1, padding=1),
                 conv_bn_relu(128,128,3,padding=1),
             )
             self.aux_combine = torch.nn.Sequential(
@@ -74,9 +74,9 @@ class parsingNet(torch.nn.Module):
             self.spp = SPPLayer(3)
 
         if self.use_spp:
-            self.pool = torch.nn.Conv2d(512,128,1) if backbone in ['34','18'] else torch.nn.Conv2d(2048,128,1)
+            self.pool = torch.nn.Conv2d(512,128,1) if backbone in ['res34','res18'] else torch.nn.Conv2d(2048,128,1)
         else:
-            self.pool = torch.nn.Conv2d(512,8,1) if backbone in ['34','18'] else torch.nn.Conv2d(2048,8,1)
+            self.pool = torch.nn.Conv2d(512,8,1) if backbone in ['res34','res18'] else torch.nn.Conv2d(2048,8,1)
         # 1/32,2048 channel
         # 288,800 -> 9,40,2048
         # (w+1) * sample_rows * 4
