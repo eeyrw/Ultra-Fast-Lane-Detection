@@ -141,7 +141,7 @@ def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestM
     for epoch in range(resume_epoch, cfg.TRAIN.EPOCH):
         train(net, train_loader, loss_dict, optimizer, scheduler,
               logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, grandIter)
-        if cfg.test_during_train and (epoch % cfg.test_interval == 0):
+        if cfg.TEST.DURING_TRAIN and (epoch % cfg.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
                 net, args, cfg, True, lastMetrics=bestMetrics)
             sampleIterAfterEpoch = (epoch+1) * \

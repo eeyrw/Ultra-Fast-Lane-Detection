@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
         train(net, train_loader, loss_dict, optimizer, scheduler,
               logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, cls_num_per_lane)
-        if cfg.test_during_train and (epoch % cfg.test_interval == 0):
+        if cfg.TEST.DURING_TRAIN and (epoch % cfg.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
                 net, args, cfg, True, lastMetrics=bestMetrics)
             sampleIterAfterEpoch = (epoch+1) * \
