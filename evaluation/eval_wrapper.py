@@ -153,7 +153,7 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
 
     if dataset == 'CULane':
         run_test(net, data_root, 'culane_eval_tmp', work_dir,
-                 griding_num, use_aux, distributed, proportion)
+                 griding_num, use_aux, distributed, proportion=proportion)
         synchronize()   # wait for all results
         if is_main_process():
             res = call_culane_eval(data_root, 'culane_eval_tmp', work_dir)
