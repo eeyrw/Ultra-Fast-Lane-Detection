@@ -51,7 +51,7 @@ def resolve_val_data(results, use_aux):
     return results
 
 
-def calc_loss(loss_dict, results, logger, global_step, grandIter):
+def calc_loss(loss_dict, results, logger, global_step, trainIdentider):
     loss = 0
 
     for i in range(len(loss_dict['name'])):
@@ -64,13 +64,13 @@ def calc_loss(loss_dict, results, logger, global_step, grandIter):
 
         if global_step % 20 == 0:
             logger.add_scalar(
-                'loss_%s/%s_%d' % (loss_dict['name'][i], loss_dict['name'][i], grandIter), loss_cur, global_step)
+                'loss_%s/%s_%s' % (loss_dict['name'][i], loss_dict['name'][i], trainIdentider), loss_cur, global_step)
 
         loss += loss_cur * loss_dict['weight'][i]
     return loss
 
 
-def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metric_dict, use_aux, cfg, grandIter):
+def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metric_dict, use_aux, cfg, trainIdentider):
     net.train()
     progress_bar = dist_tqdm(data_loader)
     t_data_0 = time.time()
@@ -104,7 +104,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
                              (img_h//2, img_w//2))
 
         loss = calc_loss(loss_dict, results, logger,
-                         global_sample_iter, grandIter)
+                         global_sample_iter, trainIdentider)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -116,14 +116,14 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         update_metrics(metric_dict, results)
 
         logger.add_scalar(
-            'meta_epoch/epoch_%d' % grandIter, epoch, global_sample_iter)
+            'meta_epoch/epoch_%s' % trainIdentider, epoch, global_sample_iter)
 
         if global_batch_step % 20 == 0:
             for me_name, me_op in zip(metric_dict['name'], metric_dict['op']):
-                logger.add_scalar('metric_%s/%s_%d' % (me_name, me_name, grandIter),
+                logger.add_scalar('metric_%s/%s_%s' % (me_name, me_name, trainIdentider),
                                   me_op.get(), global_step=global_sample_iter)
         logger.add_scalar(
-            'meta_lr/lr_%d' % grandIter, optimizer.param_groups[0]['lr'], global_step=global_sample_iter)
+            'meta_lr/lr_%s' % trainIdentider, optimizer.param_groups[0]['lr'], global_step=global_sample_iter)
 
         if hasattr(progress_bar, 'set_postfix'):
             kwargs = {me_name: '%.3f' % me_op.get() for me_name, me_op in zip(
@@ -137,22 +137,23 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         t_data_0 = time.time()
 
 
-def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestMetrics, resume_epoch, grandIter):
+def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestMetrics, resume_epoch, trainIdentider):
     for epoch in range(resume_epoch, cfg.TRAIN.EPOCH):
         train(net, train_loader, loss_dict, optimizer, scheduler,
-              logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, grandIter)
+              logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, trainIdentider)
         if cfg.TEST.DURING_TRAIN and (epoch % cfg.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
                 net, args, cfg, True, lastMetrics=bestMetrics)
             sampleIterAfterEpoch = (epoch+1) * \
                 len(train_loader) * cfg.TRAIN.BATCH_SIZE
             for metricName, metricValue in metricsDict.items():
-                logger.add_scalar('test_%s/%s_%d' % (metricName, metricName, grandIter),
+                logger.add_scalar('test_%s/%s_%s' % (metricName, metricName, trainIdentider),
                                   metricValue, global_step=sampleIterAfterEpoch)
             if isBetter:
                 bestMetrics = metricsDict
                 save_best_model(net, optimizer, work_dir, distributed)
-                dist_print('Save best model: epoch %d' % epoch)
+                dist_print('Save best model: trainId: %s, epoch %d' %
+                           (trainIdentider, epoch))
         # save_model(net, optimizer, epoch, work_dir, distributed)
     return bestMetrics, sampleIterAfterEpoch
 
@@ -272,7 +273,7 @@ if __name__ == "__main__":
     optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
         'TRAIN', net_teacher, annotated_loader, cfg)
     bestMetrics, _ = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
-                                         args, cfg, logger, bestMetrics, resume_epoch, 0)
+                                args, cfg, logger, bestMetrics, resume_epoch, '0_S0')
 
     for grandIterNum in range(1, 20):
         # Step1: Generate pseudo gt from teacher network
@@ -281,7 +282,7 @@ if __name__ == "__main__":
         net_teacher = net_teacher.cuda()
         genPseudoGt(net_teacher, pseudo_gen_loader, cfg.DATASET.ROOT,
                     "train_pseudo_gt.txt", "pseudo_clips_gt", grandIterNum)
-        pseudo_annotated_loader, _ = getPseudoAnnotatedLoader(args, cfg)
+        pseudo_annotated_loader = getPseudoAnnotatedLoader(args, cfg)
         net_teacher = net_teacher.cpu()
 
         dist_print(
@@ -291,7 +292,7 @@ if __name__ == "__main__":
         optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
             'TRAIN_PSEUDO', net_student, pseudo_annotated_loader, cfg)
         bestMetrics, _ = train_proc(net_student, optmzr, scdulr, pseudo_annotated_loader,
-                                             args, cfg, logger, bestMetrics, resume_epoch, grandIterNum)
+                                    args, cfg, logger, bestMetrics, resume_epoch, '%d_S2' % grandIterNum)
 
         # Step3: Finetune student network with mannually annotated sample
         dist_print(
@@ -299,10 +300,12 @@ if __name__ == "__main__":
         optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
             'TRAIN_FINETUNE', net_student, annotated_loader, cfg)
         bestMetrics, _ = train_proc(net_student, optmzr, scdulr, annotated_loader,
-                                             args, cfg, logger, bestMetrics, resume_epoch, grandIterNum)
+                                    args, cfg, logger, bestMetrics, resume_epoch, '%d_S3' % grandIterNum)
         net_student = net_student.cpu()
 
-        # Exchange network
+        # Step4: Exchange network
+        dist_print(
+            'Iteration %d Step 4: Exchange weights of teacher network and student network' % grandIterNum)
         net_teacher, net_student = net_student, net_teacher
 
     logger.close()
