@@ -185,7 +185,8 @@ def getVariousLoader(args, cfg):
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME,
         cfg.NETWORK.USE_AUX, distributed,
-        cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True, split_proportion=0.3,
+        cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True,
+        split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
         load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY
     )
 
@@ -193,7 +194,8 @@ def getVariousLoader(args, cfg):
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME+'-no-aug',
         cfg.NETWORK.USE_AUX, distributed,
-        cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True, split_proportion=0.3,
+        cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True,
+        split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
         load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY
     )
 
