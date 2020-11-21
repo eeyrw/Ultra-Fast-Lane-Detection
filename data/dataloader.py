@@ -83,7 +83,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
         train_dataset, batch_size=batch_size, sampler=sampler, num_workers=4)
 
     if split:
-        train_datasets = split_dataset(train_dataset, proportion)
+        train_datasets = split_dataset(train_dataset, split_proportion)
         if distributed:
             samplers = [torch.utils.data.distributed.DistributedSampler(
                 ds) for ds in train_datasets]
