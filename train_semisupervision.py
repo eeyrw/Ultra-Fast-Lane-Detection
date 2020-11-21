@@ -305,6 +305,9 @@ if __name__ == "__main__":
                                     args, cfg, logger, bestMetrics, resume_epoch, '%d_S3' % grandIterNum)
         net_student = net_student.cpu()
 
+        for metricName, metricValue in bestMetrics.items():
+            logger.add_scalar('test_summary/%s' % metricName,
+                              metricValue, global_step=grandIterNum)
         # Step4: Exchange network
         dist_print(
             'Iteration %d Step 4: Exchange weights of teacher network and student network' % grandIterNum)

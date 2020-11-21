@@ -63,7 +63,7 @@ def genPseudoGt(net,loader,datasetRoot,listPath,pseudoGtPath,iter_num):
                     if not os.path.exists(os.path.join(datasetRoot,pseudoGtPath,path)):
                         os.makedirs(os.path.join(datasetRoot,pseudoGtPath,path))
                     genSegLabelImage(img, segout, (720, 1280),os.path.join(datasetRoot,label_path), use_color=False)
-                    genSegLabelImage(img, segout, (720, 1280),os.path.join(datasetRoot,pseudoGtPath,fileName+'_%d.png'%iter_num), use_color=True)
+                    genSegLabelImage(img, segout, (720//2, 1280//2),os.path.join(datasetRoot,pseudoGtPath,fileName+'_%d.webp'%iter_num), use_color=True)
                     f.write(img_path + ' ' + label_path+'\n')
 
 # def genPseudoGt(net, data_root,distributed, batch_size=34):
