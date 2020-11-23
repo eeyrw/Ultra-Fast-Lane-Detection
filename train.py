@@ -163,7 +163,8 @@ if __name__ == "__main__":
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME,
         cfg.NETWORK.USE_AUX, distributed,
         cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION,
-        load_name=True,pin_memory=cfg.DATASET.PIN_MEMORY
+        load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY,
+        num_workers=cfg.DATASET.NUM_WORKERS
     )
 
     net = parsingNet(pretrained=True, backbone=cfg.NETWORK.BACKBONE, cls_dim=(
