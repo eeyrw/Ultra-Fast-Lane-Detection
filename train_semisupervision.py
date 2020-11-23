@@ -187,7 +187,8 @@ def getVariousLoader(args, cfg):
         cfg.NETWORK.USE_AUX, distributed,
         cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True,
         split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
-        load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY
+        load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY,
+        num_workers=cfg.DATASET.NUM_WORKERS
     )
 
     train_loaders_no_aug, _ = get_train_loader(
@@ -196,7 +197,8 @@ def getVariousLoader(args, cfg):
         cfg.NETWORK.USE_AUX, distributed,
         cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True,
         split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
-        load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY
+        load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY,
+        num_workers=cfg.DATASET.NUM_WORKERS
     )
 
     annotated_loader = train_loaders[0]
@@ -210,7 +212,8 @@ def getPseudoAnnotatedLoader(args, cfg):
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME+"-pseudo",
         cfg.NETWORK.USE_AUX, distributed,
-        cfg.DATASET.NUM_LANES, load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY
+        cfg.DATASET.NUM_LANES, load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY,
+        num_workers=cfg.DATASET.NUM_WORKERS
     )
     return pseudo_annotated_loader
 

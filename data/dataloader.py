@@ -10,7 +10,7 @@ from data.datasetUtils import get_partial_dataset, split_dataset
 
 
 def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
-                     distributed, num_lanes, proportion=1, split=False, split_proportion=0.5, load_name=False, pin_memory=False):
+                     distributed, num_lanes, proportion=1, split=False, split_proportion=0.5, load_name=False, pin_memory=False, num_workers=4):
     target_transform = transforms.Compose([
         mytransforms.FreeScaleMask((288, 800)),
         mytransforms.MaskToTensor(),
@@ -90,13 +90,13 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
         else:
             samplers = [torch.utils.data.RandomSampler(
                 ds) for ds in train_datasets]
-        train_loader = [torch.utils.data.DataLoader(ds, batch_size=batch_size, sampler=sampler, num_workers=4, pin_memory=pin_memory)
+        train_loader = [torch.utils.data.DataLoader(ds, batch_size=batch_size, sampler=sampler, num_workers=num_workers, pin_memory=pin_memory)
                         for ds, sampler in zip(train_datasets, samplers)]
 
     return train_loader, cls_num_per_lane
 
 
-def get_test_loader(batch_size, data_root, dataset, distributed, proportion=1):
+def get_test_loader(batch_size, data_root, dataset, distributed, proportion=1, num_workers=4):
     img_transforms = transforms.Compose([
         transforms.Resize((288, 800)),
         transforms.ToTensor(),
@@ -118,11 +118,11 @@ def get_test_loader(batch_size, data_root, dataset, distributed, proportion=1):
     else:
         sampler = torch.utils.data.SequentialSampler(test_dataset)
     loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=batch_size, sampler=sampler, num_workers=4)
+        test_dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers)
     return loader
 
 
-def get_gen_pseudo_loader(batch_size, data_root, dataset, distributed):
+def get_gen_pseudo_loader(batch_size, data_root, dataset, distributed, num_workers=4):
     img_transforms = transforms.Compose([
         transforms.Resize((288, 800)),
         transforms.ToTensor(),
@@ -142,7 +142,7 @@ def get_gen_pseudo_loader(batch_size, data_root, dataset, distributed):
     else:
         sampler = torch.utils.data.SequentialSampler(test_dataset)
     loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=batch_size, sampler=sampler, num_workers=8)
+        test_dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers)
     return loader
 
 

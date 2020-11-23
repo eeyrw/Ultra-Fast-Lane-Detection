@@ -6,8 +6,6 @@ _C = CN()
 _C.SYSTEM = CN()
 # Number of GPUS to use in the experiment
 _C.SYSTEM.NUM_GPUS = 1
-# Number of workers for doing things
-_C.SYSTEM.NUM_WORKERS = 4
 
 
 _C.DATASET = CN()
@@ -19,6 +17,7 @@ _C.DATASET.TEST_PROPORTION = 1.0
 _C.DATASET.NUM_LANES = 4
 _C.DATASET.PIN_MEMORY = True
 _C.DATASET.SEMI_SUPERVISION_SPLIT = 0.1
+_C.DATASET.NUM_WORKERS = 4
 
 
 _C.TRAIN = CN()
