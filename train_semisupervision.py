@@ -277,6 +277,10 @@ if __name__ == "__main__":
     bestMetrics, _ = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
                                 args, cfg, logger, bestMetrics, resume_epoch, '0_S0')
 
+    for metricName, metricValue in bestMetrics.items():
+        logger.add_scalar('test_summary/%s' % metricName,
+                          metricValue, global_step=0)
+
     for grandIterNum in range(1, 20):
         # Step1: Generate pseudo gt from teacher network
         dist_print(
