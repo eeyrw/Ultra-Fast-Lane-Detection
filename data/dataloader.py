@@ -59,7 +59,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
                                        griding_num=griding_num,
                                        row_anchor=tusimple_row_anchor,
                                        segment_transform=segment_transform, use_aux=use_aux, num_lanes=num_lanes, load_name=load_name)
-        cls_num_per_lane = 56
+        cls_num_per_lane = 18
     elif dataset == 'Tusimple':
         train_dataset = LaneClsDataset(data_root,
                                        os.path.join(data_root, 'train_gt.txt'),
