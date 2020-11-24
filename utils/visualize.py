@@ -41,7 +41,7 @@ def genSegLabelImage(image,segOutput,size,path,use_color=False):
         res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)
         cv2.imwrite(path,res)
     else:
-        cv2.imwrite(path,plainSegOutput)
+        cv2.imwrite(path,plainSegOutput,[int(cv2.IMWRITE_WEBP_QUALITY),60])
         # labelImage = Image.fromarray(plainSegOutput)
         # labelImage.save(path)
 
@@ -131,4 +131,4 @@ def visualizeImageAndLabel(self, writer, tag, step, image, label, output):
 
 
 if __name__ == "__main__":
-    genSegLabelImage(torch.randn(5,36,100),(800,1280),"a.png",use_color=False)
+    genSegLabelImage(torch.randn(3,720,1280),torch.randn(5,36,100),(720,1280),"a.webp",use_color=True)
