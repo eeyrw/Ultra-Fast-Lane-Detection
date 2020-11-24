@@ -141,14 +141,18 @@ def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestM
     for epoch in range(resume_epoch, cfg[paramSet]['EPOCH']):
         train(net, train_loader, loss_dict, optimizer, scheduler,
               logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, trainIdentider)
+
+        sampleIterAfterEpoch = (epoch+1) * \
+            len(train_loader) * cfg[paramSet]['BATCH_SIZE']
+
         if cfg.TEST.DURING_TRAIN and (epoch % cfg.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
                 net, args, cfg, True, lastMetrics=bestMetrics)
-            sampleIterAfterEpoch = (epoch+1) * \
-                len(train_loader) * cfg[paramSet]['BATCH_SIZE']
-            for metricName, metricValue in metricsDict.items():
-                logger.add_scalar('test_%s/%s_%s' % (metricName, metricName, trainIdentider),
-                                  metricValue, global_step=sampleIterAfterEpoch)
+
+            if metricsDict is not None:
+                for metricName, metricValue in metricsDict.items():
+                    logger.add_scalar('test_%s/%s_%s' % (metricName, metricName, trainIdentider),
+                                      metricValue, global_step=sampleIterAfterEpoch)
             if isBetter:
                 bestMetrics = metricsDict
                 save_best_model(net, optimizer, work_dir, distributed)
@@ -281,16 +285,17 @@ if __name__ == "__main__":
                                 args, cfg, logger, bestMetrics, resume_epoch,
                                 '0_S0', paramSet='TRAIN')
 
-    for metricName, metricValue in bestMetrics.items():
-        logger.add_scalar('test_summary/%s' % metricName,
-                          metricValue, global_step=0)
+    if bestMetrics is not None:
+        for metricName, metricValue in bestMetrics.items():
+            logger.add_scalar('test_summary/%s' % metricName,
+                              metricValue, global_step=0)
 
     for grandIterNum in range(1, 20):
         # Step1: Generate pseudo gt from teacher network
         dist_print(
             'Iteration %d Step 1: Generate pseudo gt from teacher network' % grandIterNum)
         net_teacher = net_teacher.cuda()
-        genPseudoGt(net_teacher, pseudo_gen_loader, cfg.DATASET.ROOT,
+        genPseudoGt(net_teacher, pseudo_gen_loader, cfg.DATASET.ROOT, cfg.DATASET.RAW_IMG_SIZE,
                     "train_pseudo_gt.txt", "pseudo_clips_gt", grandIterNum)
         pseudo_annotated_loader = getPseudoAnnotatedLoader(args, cfg)
         net_teacher = net_teacher.cpu()
@@ -315,6 +320,7 @@ if __name__ == "__main__":
                                     '%d_S3' % grandIterNum, paramSet='TRAIN_FINETUNE')
         net_student = net_student.cpu()
 
+    if bestMetrics is not None:
         for metricName, metricValue in bestMetrics.items():
             logger.add_scalar('test_summary/%s' % metricName,
                               metricValue, global_step=grandIterNum)
