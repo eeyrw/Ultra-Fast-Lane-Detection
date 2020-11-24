@@ -137,15 +137,15 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         t_data_0 = time.time()
 
 
-def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestMetrics, resume_epoch, trainIdentider):
-    for epoch in range(resume_epoch, cfg.TRAIN.EPOCH):
+def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestMetrics, resume_epoch, trainIdentider, paramSet='TRAIN'):
+    for epoch in range(resume_epoch, cfg[paramSet]['EPOCH']):
         train(net, train_loader, loss_dict, optimizer, scheduler,
               logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, trainIdentider)
         if cfg.TEST.DURING_TRAIN and (epoch % cfg.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
                 net, args, cfg, True, lastMetrics=bestMetrics)
             sampleIterAfterEpoch = (epoch+1) * \
-                len(train_loader) * cfg.TRAIN.BATCH_SIZE
+                len(train_loader) * cfg[paramSet]['BATCH_SIZE']
             for metricName, metricValue in metricsDict.items():
                 logger.add_scalar('test_%s/%s_%s' % (metricName, metricName, trainIdentider),
                                   metricValue, global_step=sampleIterAfterEpoch)
@@ -222,7 +222,7 @@ def getOptimizerAndSchedulerAndResumeEpoch(paramSet, net, loader, cfg):
     optimizer = get_optimizer(net, cfg, paramSet=paramSet)
     resume_epoch = recoveryState(net, optimizer, cfg)
     scheduler = get_scheduler(
-        optimizer, cfg, len(loader) * cfg.TRAIN.BATCH_SIZE)
+        optimizer, cfg, len(loader) * cfg.TRAIN.BATCH_SIZE, paramSet=paramSet)
     return optimizer, scheduler, resume_epoch
 
 
@@ -278,7 +278,8 @@ if __name__ == "__main__":
     optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
         'TRAIN', net_teacher, annotated_loader, cfg)
     bestMetrics, _ = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
-                                args, cfg, logger, bestMetrics, resume_epoch, '0_S0')
+                                args, cfg, logger, bestMetrics, resume_epoch,
+                                '0_S0', paramSet='TRAIN')
 
     for metricName, metricValue in bestMetrics.items():
         logger.add_scalar('test_summary/%s' % metricName,
@@ -301,7 +302,8 @@ if __name__ == "__main__":
         optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
             'TRAIN_PSEUDO', net_student, pseudo_annotated_loader, cfg)
         bestMetrics, _ = train_proc(net_student, optmzr, scdulr, pseudo_annotated_loader,
-                                    args, cfg, logger, bestMetrics, resume_epoch, '%d_S2' % grandIterNum)
+                                    args, cfg, logger, bestMetrics, resume_epoch,
+                                    '%d_S2' % grandIterNum, paramSet='TRAIN_PSEUDO')
 
         # Step3: Finetune student network with mannually annotated sample
         dist_print(
@@ -309,7 +311,8 @@ if __name__ == "__main__":
         optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
             'TRAIN_FINETUNE', net_student, annotated_loader, cfg)
         bestMetrics, _ = train_proc(net_student, optmzr, scdulr, annotated_loader,
-                                    args, cfg, logger, bestMetrics, resume_epoch, '%d_S3' % grandIterNum)
+                                    args, cfg, logger, bestMetrics, resume_epoch,
+                                    '%d_S3' % grandIterNum, paramSet='TRAIN_FINETUNE')
         net_student = net_student.cpu()
 
         for metricName, metricValue in bestMetrics.items():
