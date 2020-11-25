@@ -8,7 +8,7 @@ from model.model import parsingNet
 
 
 if __name__ == "__main__":
-    input = torch.randn(2,3,800,288)
+    input = torch.randn(28,3,800,288)
     # net = SPPLayer(2)
     # out = net(input)
     net = parsingNet(size=(288, 800), pretrained=True, backbone='fast_scnn', cls_dim=(37, 10, 4), use_aux=True, use_spp=False)

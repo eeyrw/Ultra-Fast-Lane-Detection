@@ -42,8 +42,8 @@ class parsingNet(torch.nn.Module):
             self.model = FastSCNN(
                 5, segOut=use_aux, segOutSize=(36, 100), midFeature=True)
 
-            self.pool = torch.nn.Conv2d(128, 8, 1)
-            self.interPoolChnNum = 450
+            self.pool = torch.nn.Conv2d(128, 4, 1)
+            self.interPoolChnNum = 4*100*36
 
             self.cls = torch.nn.Sequential(
                 torch.nn.Linear(self.interPoolChnNum, 2048),
@@ -92,10 +92,7 @@ class parsingNet(torch.nn.Module):
                 initialize_weights(
                     self.aux_header2, self.aux_header3, self.aux_header4, self.aux_combine)
 
-            if use_spp:
-                self.interPoolChnNum = 1792
-            else:
-                self.interPoolChnNum = 1800
+            self.interPoolChnNum = 1800
 
             self.cls = torch.nn.Sequential(
                 torch.nn.Linear(self.interPoolChnNum, 2048),
@@ -103,14 +100,8 @@ class parsingNet(torch.nn.Module):
                 torch.nn.Linear(2048, self.total_dim),
             )
 
-            if self.use_spp:
-                self.spp = SPPLayer(3)
 
-            if self.use_spp:
-                self.pool = torch.nn.Conv2d(512, 128, 1) if backbone in [
-                    'res34', 'res18'] else torch.nn.Conv2d(2048, 128, 1)
-            else:
-                self.pool = torch.nn.Conv2d(512, 8, 1) if backbone in [
+            self.pool = torch.nn.Conv2d(512, 8, 1) if backbone in [
                     'res34', 'res18'] else torch.nn.Conv2d(2048, 8, 1)
             # 1/32,2048 channel
             # 288,800 -> 9,40,2048
@@ -140,8 +131,6 @@ class parsingNet(torch.nn.Module):
         else:
             x2, x3, fea = self.model(x)
 
-            if self.use_spp:
-                spp_out = self.spp(x2)
             if self.use_aux:
                 x2 = self.aux_header2(x2)
                 x3 = self.aux_header3(x3)
@@ -155,12 +144,11 @@ class parsingNet(torch.nn.Module):
             else:
                 aux_seg = None
 
-            if self.use_spp:
-                fea = self.spp(self.pool(fea)) + spp_out
-            else:
-                fea = self.pool(fea).view(-1, self.interPoolChnNum)
+            fea = self.pool(fea)
+            fea = fea.view(-1, self.interPoolChnNum)
 
-            group_cls = self.cls(fea).view(-1, *self.cls_dim)
+            group_cls = self.cls(fea)
+            group_cls = group_cls.view(-1, *self.cls_dim)
 
             if self.use_aux:
                 return group_cls, aux_seg
