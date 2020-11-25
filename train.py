@@ -4,6 +4,7 @@ import datetime
 import numpy as np
 
 from model.model import parsingNet
+from model.model import validBackbones
 from data.dataloader import get_train_loader
 
 from utils.dist_utils import dist_print, dist_tqdm, is_main_process, DistSummaryWriter
@@ -155,8 +156,7 @@ if __name__ == "__main__":
     dist_print(datetime.datetime.now().strftime(
         '[%Y/%m/%d %H:%M:%S]') + ' start training...')
     dist_print(cfg)
-    assert cfg.NETWORK.BACKBONE in ['res18', 'res34', 'res50', 'res101',
-                                    'res152', '50next', '101next', '50wide', '101wide']
+    assert cfg.NETWORK.BACKBONE in validBackbones
 
     train_loader, cls_num_per_lane = get_train_loader(
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,

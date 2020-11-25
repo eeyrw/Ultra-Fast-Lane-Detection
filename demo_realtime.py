@@ -2,6 +2,7 @@ import torch
 import os
 import cv2
 from model.model import parsingNet
+from model.model import validBackbones
 from utils.common import merge_yacs_config
 from utils.dist_utils import dist_print
 import torch
@@ -56,8 +57,7 @@ if __name__ == "__main__":
     args, cfg = merge_yacs_config()
 
     dist_print('start testing...')
-    assert cfg.NETWORK.BACKBONE in ['res18', 'res34', 'res50', 'res101',
-                                    'res152', '50next', '101next', '50wide', '101wide']
+    assert cfg.NETWORK.BACKBONE in validBackbones
 
     if cfg.DATASET.NAME == 'CULane':
         row_anchor = culane_row_anchor

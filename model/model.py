@@ -3,6 +3,9 @@ from model.backbone import resnet
 from model.spp import SPPLayer
 import numpy as np
 
+validBackbones = ['res18', 'res34', 'res50', 'res101',
+                                    'res152', '50next', '101next', '50wide', '101wide']
+
 class conv_bn_relu(torch.nn.Module):
     def __init__(self,in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,bias=False):
         super(conv_bn_relu,self).__init__()
