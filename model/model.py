@@ -49,9 +49,9 @@ class parsingNet(torch.nn.Module):
             self.interPoolChnNum = 8*100*36//16
 
             self.cls = torch.nn.Sequential(
-                torch.nn.Linear(self.interPoolChnNum, 2048),
+                torch.nn.Linear(self.interPoolChnNum, 512),
                 torch.nn.ReLU(),
-                torch.nn.Linear(2048, self.total_dim),
+                torch.nn.Linear(512, self.total_dim),
             )
             # 1/32,2048 channel
             # 288,800 -> 9,40,2048
