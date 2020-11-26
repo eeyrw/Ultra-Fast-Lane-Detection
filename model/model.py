@@ -42,8 +42,11 @@ class parsingNet(torch.nn.Module):
             self.model = FastSCNN(
                 5, segOut=use_aux, segOutSize=(36, 100), midFeature=True)
 
-            self.pool = torch.nn.Conv2d(128, 4, 1)
-            self.interPoolChnNum = 4*100*36
+            self.pool = torch.nn.Sequential(
+                torch.nn.AvgPool2d(4),
+                torch.nn.Conv2d(128, 8, 1),
+            )
+            self.interPoolChnNum = 8*100*36//16
 
             self.cls = torch.nn.Sequential(
                 torch.nn.Linear(self.interPoolChnNum, 2048),
@@ -100,9 +103,8 @@ class parsingNet(torch.nn.Module):
                 torch.nn.Linear(2048, self.total_dim),
             )
 
-
             self.pool = torch.nn.Conv2d(512, 8, 1) if backbone in [
-                    'res34', 'res18'] else torch.nn.Conv2d(2048, 8, 1)
+                'res34', 'res18'] else torch.nn.Conv2d(2048, 8, 1)
             # 1/32,2048 channel
             # 288,800 -> 9,40,2048
             # (w+1) * sample_rows * 4
