@@ -5,13 +5,15 @@ from model.model import parsingNet
 
 # torch.backends.cudnn.deterministic = False
 
+device = 'cuda'
+
 torch.backends.cudnn.benchmark = True
-net = parsingNet(pretrained = False, backbone='res18',cls_dim = (100+1,56,4),use_aux=False, use_spp=False).cuda()
-# net = parsingNet(pretrained = False, backbone='res18',cls_dim = (200+1,18,4),use_aux=False).cuda()
+net = parsingNet(pretrained = False, backbone='res18',cls_dim = (100+1,56,4),use_aux=False, use_spp=False).to(device)
+# net = parsingNet(pretrained = False, backbone='res18',cls_dim = (200+1,18,4),use_aux=False).to(device)
 
 net.eval()
 
-x = torch.zeros((1,3,288,800)).cuda() + 1
+x = torch.zeros((1,3,288,800)).to(device) + 1
 for i in range(10):
     y = net(x)
 
