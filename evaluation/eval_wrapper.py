@@ -167,9 +167,21 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
                 FN += val_fn
                 dist_print(k, val)
                 metricsDict[k] = val
-            P = TP * 1.0/(TP + FP)
-            R = TP * 1.0/(TP + FN)
-            F = 2*P*R/(P + R)
+            if (TP + FP)!=0:
+                P = TP * 1.0/(TP + FP)
+            else:
+                P = 0
+
+            if (TP + FN)!=0:
+                R = TP * 1.0/(TP + FN)
+            else:
+                R = 0     
+
+            if (P + R)!=0:
+                F = 2*P*R/(P + R)
+            else:
+                F = 0
+
             metricsDict['F1measure'] = F
             if lastMetrics is not None and 'F1measure' in lastMetrics.keys():
                 if metricsDict['F1measure'] > lastMetrics['F1measure']:

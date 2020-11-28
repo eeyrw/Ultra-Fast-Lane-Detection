@@ -46,7 +46,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
                                        img_transform=img_transform, target_transform=target_transform,
                                        simu_transform=simu_transform,
                                        griding_num=griding_num,
-                                       row_anchor=tusimple_row_anchor,
+                                       row_anchor=culane_row_anchor,
                                        segment_transform=segment_transform, use_aux=use_aux, num_lanes=num_lanes, load_name=load_name)
         cls_num_per_lane = 18
 
@@ -57,7 +57,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
                                        img_transform=img_transform, target_transform=target_transform,
                                        simu_transform=None,
                                        griding_num=griding_num,
-                                       row_anchor=tusimple_row_anchor,
+                                       row_anchor=culane_row_anchor,
                                        segment_transform=segment_transform, use_aux=use_aux, num_lanes=num_lanes, load_name=load_name)
         cls_num_per_lane = 18
     elif dataset == 'Tusimple':
