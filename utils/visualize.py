@@ -1,3 +1,4 @@
+from data.constant import tusimple_row_anchor, culane_row_anchor, lane_index_colour
 from torchvision import transforms
 from PIL import Image
 import scipy.io
@@ -22,44 +23,75 @@ import matplotlib
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from data.constant import tusimple_row_anchor, culane_row_anchor, lane_index_colour
 
 
-def genSegLabelImage(image,segOutput,size,path,use_color=False):
+def genPseudoLabelImage(image, segOutput, imageSize, segSize, visualize_path, labelPath):
     # segOutput: [class,h,w]
-    segOutput = torch.unsqueeze(torch.unsqueeze(torch.argmax(torch.sigmoid(segOutput),dim=0), 0), 0)
+    segOutput = torch.unsqueeze(torch.unsqueeze(
+        torch.argmax(segOutput, dim=0), 0), 0)
     # segOutput: [1,1,h,w]
-    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(segOutput.float(),size=size)).byte().cpu().numpy()
+    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(
+        segOutput.float(), size=segSize)).byte().numpy()
+    plainSegOutputWithImageSize = torch.squeeze(torch.nn.functional.interpolate(
+        segOutput.float(), size=imageSize)).byte().numpy()        
 
-    image = torch.unsqueeze(image,dim=0)
-    image = torch.squeeze(torch.nn.functional.interpolate(image.float(),size=size))
+    image = torch.unsqueeze(image, dim=0)
+    image = torch.squeeze(
+        torch.nn.functional.interpolate(image.float(), size=imageSize))
+
+    # Step 1. chw to hwc Step 2. RGB to BGR
+    img_bgr = normalizeImage(image).transpose((1, 2, 0))[..., ::-1]
+    colorMapMat = np.array(
+        lane_index_colour, dtype=np.uint8)[..., ::-1]  # RGB to BGR
+    segImage = colorMapMat[plainSegOutputWithImageSize]
+    res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)
+    cv2.imwrite(visualize_path, res, [int(cv2.IMWRITE_WEBP_QUALITY), 95])
+    cv2.imwrite(labelPath, plainSegOutput)
+
+def genSegLabelImage(image, segOutput, size, path, use_label=True, use_color=False):
+    # segOutput: [class,h,w]
+    segOutput = torch.unsqueeze(torch.unsqueeze(
+        torch.argmax(segOutput, dim=0), 0), 0)
+    # segOutput: [1,1,h,w]
+    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(
+        segOutput.float(), size=size)).byte().cpu().numpy()
+
+    image = torch.unsqueeze(image, dim=0)
+    image = torch.squeeze(
+        torch.nn.functional.interpolate(image.float(), size=size))
 
     if use_color:
-        img_bgr = normalizeImage(image).transpose((1, 2, 0))[...,::-1] # Step 1. chw to hwc Step 2. RGB to BGR
-        colorMapMat = np.array(lane_index_colour,dtype=np.uint8)[...,::-1] # RGB to BGR
+        # Step 1. chw to hwc Step 2. RGB to BGR
+        img_bgr = normalizeImage(image).transpose((1, 2, 0))[..., ::-1]
+        colorMapMat = np.array(
+            lane_index_colour, dtype=np.uint8)[..., ::-1]  # RGB to BGR
         segImage = colorMapMat[plainSegOutput]
         res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)
-        cv2.imwrite(path,res)
-    else:
-        cv2.imwrite(path,plainSegOutput,[int(cv2.IMWRITE_WEBP_QUALITY),60])
+        cv2.imwrite(path, res, [int(cv2.IMWRITE_WEBP_QUALITY), 95])
+    if use_label:
+        cv2.imwrite(path, plainSegOutput)
         # labelImage = Image.fromarray(plainSegOutput)
         # labelImage.save(path)
 
 
-def logSegLabelImage(logger,tag,step,image,pointOutput,row_anchor,griding_num,cls_num_per_lane,segOutput,size):
+def logSegLabelImage(logger, tag, step, image, pointOutput, row_anchor, griding_num, cls_num_per_lane, segOutput, size):
     # segOutput: [class,h,w]
-    segOutput = torch.unsqueeze(torch.unsqueeze(torch.argmax(torch.sigmoid(segOutput),dim=0), 0), 0)
+    segOutput = torch.unsqueeze(torch.unsqueeze(
+        torch.argmax(torch.sigmoid(segOutput), dim=0), 0), 0)
     # segOutput: [1,1,h,w]
-    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(segOutput.float(),size=size)).byte().cpu().numpy()
+    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(
+        segOutput.float(), size=size)).byte().cpu().numpy()
 
-    image = torch.unsqueeze(image,dim=0)
-    image = torch.squeeze(torch.nn.functional.interpolate(image.float(),size=size))
+    image = torch.unsqueeze(image, dim=0)
+    image = torch.squeeze(
+        torch.nn.functional.interpolate(image.float(), size=size))
 
-    img_bgr = normalizeImage(image).transpose((1, 2, 0))[...,::-1] # Step 1. chw to hwc Step 2. RGB to BGR
-    colorMapMat = np.array(lane_index_colour,dtype=np.uint8)[...,::-1] # RGB to BGR
+    # Step 1. chw to hwc Step 2. RGB to BGR
+    img_bgr = normalizeImage(image).transpose((1, 2, 0))[..., ::-1]
+    colorMapMat = np.array(
+        lane_index_colour, dtype=np.uint8)[..., ::-1]  # RGB to BGR
     segImage = colorMapMat[plainSegOutput]
     res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)
-    
 
     img_h = size[0]
     img_w = size[1]
@@ -85,11 +117,9 @@ def logSegLabelImage(logger,tag,step,image,pointOutput,row_anchor,griding_num,cl
                     cv2.circle(res, ppp, 4, lane_index_colour[0][::-1], -1)
                     cv2.circle(res, ppp, 3, lane_index_colour[i+1][::-1], -1)
 
-    res = res[...,::-1].copy() # BGR to RGB
+    res = res[..., ::-1].copy()  # BGR to RGB
     logger.add_image(tag, res, step, dataformats='HWC')
 
-
-    
 
 def normalizeImage(imageTensor):
     maxVal = torch.max(imageTensor)
@@ -129,6 +159,6 @@ def visualizeImageAndLabel(self, writer, tag, step, image, label, output):
                       global_step=step, close=True, walltime=None)
 
 
-
 if __name__ == "__main__":
-    genSegLabelImage(torch.randn(3,720,1280),torch.randn(5,36,100),(720,1280),"a.webp",use_color=True)
+    genSegLabelImage(torch.randn(3, 720, 1280), torch.randn(
+        5, 36, 100), (720, 1280), "a.webp", use_color=True)

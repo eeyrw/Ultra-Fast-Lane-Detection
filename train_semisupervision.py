@@ -237,6 +237,7 @@ if __name__ == "__main__":
     args, cfg = merge_yacs_config()
 
     work_dir = get_work_dir(cfg)
+    currentDateTime = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
     distributed = False
     if 'WORLD_SIZE' in os.environ:
@@ -296,7 +297,8 @@ if __name__ == "__main__":
             'Iteration %d Step 1: Generate pseudo gt from teacher network' % grandIterNum)
         net_teacher = net_teacher.cuda()
         genPseudoGt(net_teacher, pseudo_gen_loader, cfg.DATASET.ROOT, cfg.DATASET.RAW_IMG_SIZE,
-                    "train_pseudo_gt.txt", "pseudo_clips_gt", grandIterNum)
+                    "train_pseudo_gt.txt",  "pseudo_clips_gt_%s" % currentDateTime, grandIterNum, 
+                    multiproc_num=8, use_multiproc=True)
         pseudo_annotated_loader = getPseudoAnnotatedLoader(args, cfg)
         net_teacher = net_teacher.cpu()
 
@@ -323,7 +325,7 @@ if __name__ == "__main__":
         if bestMetrics is not None:
             for metricName, metricValue in bestMetrics.items():
                 logger.add_scalar('test_summary/%s' % metricName,
-                                metricValue, global_step=grandIterNum)
+                                  metricValue, global_step=grandIterNum)
         # Step4: Exchange network
         dist_print(
             'Iteration %d Step 4: Exchange weights of teacher network and student network' % grandIterNum)
