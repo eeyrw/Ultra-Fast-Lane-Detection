@@ -320,10 +320,10 @@ if __name__ == "__main__":
                                     '%d_S3' % grandIterNum, paramSet='TRAIN_FINETUNE')
         net_student = net_student.cpu()
 
-    if bestMetrics is not None:
-        for metricName, metricValue in bestMetrics.items():
-            logger.add_scalar('test_summary/%s' % metricName,
-                              metricValue, global_step=grandIterNum)
+        if bestMetrics is not None:
+            for metricName, metricValue in bestMetrics.items():
+                logger.add_scalar('test_summary/%s' % metricName,
+                                metricValue, global_step=grandIterNum)
         # Step4: Exchange network
         dist_print(
             'Iteration %d Step 4: Exchange weights of teacher network and student network' % grandIterNum)
