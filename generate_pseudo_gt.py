@@ -76,7 +76,7 @@ def genPseudoGt(net, loader, datasetRoot, segSize, listPath, pseudoGtPath, iter_
                     imgSize = (segSize[1]//2, segSize[0]//2)
                     segOutImgSize = (segSize[1], segSize[0])
                     if use_multiproc:
-                        pool.apply_async(genPseudoLabelImage,
+                        pool.apply(genPseudoLabelImage,
                                          (img.cpu(), segout.cpu(), imgSize, segOutImgSize, visualPath, labelPath))
                     else:
                         genPseudoLabelImage(img.cpu(), segout.cpu(
