@@ -298,7 +298,7 @@ if __name__ == "__main__":
         net_teacher = net_teacher.cuda()
         genPseudoGt(net_teacher, pseudo_gen_loader, cfg.DATASET.ROOT, cfg.DATASET.RAW_IMG_SIZE,
                     "train_pseudo_gt.txt",  "pseudo_clips_gt_%s" % currentDateTime, grandIterNum, 
-                    multiproc_num=8, use_multiproc=True)
+                    multiproc_num=8, use_multiproc=False)
         pseudo_annotated_loader = getPseudoAnnotatedLoader(args, cfg)
         net_teacher = net_teacher.cpu()
 
