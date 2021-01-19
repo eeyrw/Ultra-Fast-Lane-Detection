@@ -24,7 +24,7 @@ class conv_bn_relu(torch.nn.Module):
 
 
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', cls_dim=(37, 10, 4), use_aux=False, use_spp=False):
+    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', cls_dim=(37, 10, 4), use_aux=False, use_spp=False, use_mid_aux=False):
         super(parsingNet, self).__init__()
 
         self.size = size
@@ -35,6 +35,7 @@ class parsingNet(torch.nn.Module):
         # num_cls_per_lane is the number of row anchors
         self.use_aux = use_aux
         self.use_spp = use_spp
+        self.use_mid_aux = use_mid_aux
         self.total_dim = np.prod(cls_dim)
         self.backbone = backbone
 
@@ -121,13 +122,15 @@ class parsingNet(torch.nn.Module):
                 fea = self.model(x)[0]
 
             fea = self.pool(fea)
-            fea = fea.view(-1, self.interPoolChnNum)
+            mid_fea = fea.view(-1, self.interPoolChnNum)
 
-            group_cls = self.cls(fea)
+            group_cls = self.cls(mid_fea)
             group_cls = group_cls.view(-1, *self.cls_dim)
 
             if self.use_aux:
                 return group_cls, aux_seg
+            if self.use_mid_aux:
+                return group_cls, mid_fea
 
             return group_cls
         else:
@@ -147,13 +150,15 @@ class parsingNet(torch.nn.Module):
                 aux_seg = None
 
             fea = self.pool(fea)
-            fea = fea.view(-1, self.interPoolChnNum)
+            mid_fea = fea.view(-1, self.interPoolChnNum)
 
-            group_cls = self.cls(fea)
+            group_cls = self.cls(mid_fea)
             group_cls = group_cls.view(-1, *self.cls_dim)
 
             if self.use_aux:
                 return group_cls, aux_seg
+            if self.use_mid_aux:
+                return group_cls, mid_fea
 
             return group_cls
 
