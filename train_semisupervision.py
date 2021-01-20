@@ -190,8 +190,9 @@ def getVariousLoader(args, cfg):
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME,
         cfg.NETWORK.USE_AUX, distributed,
-        cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True,
-        split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
+        cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION,
+        split=True, split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
+        extra_split_list=cfg.EXTRA_SPLIT_LIST,
         load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY,
         num_workers=cfg.DATASET.NUM_WORKERS
     )
@@ -200,8 +201,9 @@ def getVariousLoader(args, cfg):
         cfg.TRAIN.BATCH_SIZE, cfg.DATASET.ROOT,
         cfg.NETWORK.GRIDING_NUM, cfg.DATASET.NAME+'-no-aug',
         cfg.NETWORK.USE_AUX, distributed,
-        cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION, split=True,
-        split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
+        cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION,
+        split=True, split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
+        extra_split_list=cfg.EXTRA_SPLIT_LIST,
         load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY,
         num_workers=cfg.DATASET.NUM_WORKERS
     )
@@ -297,7 +299,7 @@ if __name__ == "__main__":
             'Iteration %d Step 1: Generate pseudo gt from teacher network' % grandIterNum)
         net_teacher = net_teacher.cuda()
         genPseudoGt(net_teacher, pseudo_gen_loader, cfg.DATASET.ROOT, cfg.DATASET.RAW_IMG_SIZE,
-                    "train_pseudo_gt.txt",  "pseudo_clips_gt_%s" % currentDateTime, grandIterNum, 
+                    "train_pseudo_gt.txt",  "pseudo_clips_gt_%s" % currentDateTime, grandIterNum,
                     multiproc_num=8, use_multiproc=False)
         pseudo_annotated_loader = getPseudoAnnotatedLoader(args, cfg)
         net_teacher = net_teacher.cpu()

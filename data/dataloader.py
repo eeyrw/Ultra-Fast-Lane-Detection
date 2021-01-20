@@ -6,11 +6,13 @@ import torchvision.transforms as transforms
 import data.mytransforms as mytransforms
 from data.constant import tusimple_row_anchor, culane_row_anchor
 from data.dataset import LaneClsDataset, LaneTestDataset, LaneGenPseudoDataset
-from data.datasetUtils import get_partial_dataset, split_dataset
+from data.datasetUtils import get_partial_dataset, split_dataset, split_dataset_by_list
 
 
 def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
-                     distributed, num_lanes, proportion=1, split=False, split_proportion=0.5, load_name=False, pin_memory=False, num_workers=4):
+                     distributed, num_lanes, proportion=1,
+                     split=False, split_proportion=0.5, extra_split_list=None,
+                     load_name=False, pin_memory=False, num_workers=4):
     target_transform = transforms.Compose([
         mytransforms.FreeScaleMask((288, 800)),
         mytransforms.MaskToTensor(),
@@ -103,7 +105,14 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
         train_dataset, batch_size=batch_size, sampler=sampler, num_workers=4)
 
     if split:
-        train_datasets = split_dataset(train_dataset, split_proportion)
+        if extra_split_list is None:
+            train_datasets = split_dataset(train_dataset, split_proportion)
+        else:
+            with open(extra_split_list, 'r') as f:
+                split_list = f.readlines()
+            train_datasets = split_dataset_by_list(
+                train_dataset, split_list)
+
         if distributed:
             samplers = [torch.utils.data.distributed.DistributedSampler(
                 ds) for ds in train_datasets]
