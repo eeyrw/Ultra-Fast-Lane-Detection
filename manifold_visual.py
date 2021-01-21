@@ -29,7 +29,7 @@ with open('DatasetEmbedding_Tusimple.pkl', 'rb') as f:
     # for i in range(9000):
     #    image_arr.append(embeddingDict[visual_arr[i]])
 
-IMG_ROOT = 'E:\Tusimple'
+IMG_ROOT = r'E:\Tusimple'
 X_IMG = visual_arr_key
 X = image_arr
 n_samples, n_features = X.shape
