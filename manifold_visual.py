@@ -7,12 +7,12 @@ import pickle
 from time import time
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
 from matplotlib import offsetbox
 from sklearn import (manifold, datasets, decomposition, ensemble,
                      discriminant_analysis, random_projection, neighbors)
-
+import os
 from random import sample
-
 
 
 with open('DatasetEmbedding_Tusimple.pkl', 'rb') as f:
@@ -23,44 +23,50 @@ with open('DatasetEmbedding_Tusimple.pkl', 'rb') as f:
     key_arr = list(embeddingDict.keys())
 
     # 采样一部分向量可视化
-    visual_arr = sample(key_arr, min(9000,len(key_arr)))
-    image_arr = np.concatenate([[embeddingDict[v]] for v in visual_arr], axis=0)
+    visual_arr_key = sample(key_arr, min(9000, len(key_arr)))
+    image_arr = np.concatenate([[embeddingDict[v]]
+                                for v in visual_arr_key], axis=0)
     # for i in range(9000):
     #    image_arr.append(embeddingDict[visual_arr[i]])
 
-
-X=image_arr
+IMG_ROOT = 'E:\Tusimple'
+X_IMG = visual_arr_key
+X = image_arr
 n_samples, n_features = X.shape
 n_neighbors = 30
 
 # ----------------------------------------------------------------------
 # Scale and visualize the embedding vectors
+
+
 def plot_embedding(X, title=None):
     x_min, x_max = np.min(X, 0), np.max(X, 0)
     X = (X - x_min) / (x_max - x_min)
 
     plt.figure()
     ax = plt.subplot(111)
-    for i in range(X.shape[0]):
-        # plt.text(X[i, 0], X[i, 1], str(y[i]),
-        #          color=plt.cm.Set1(y[i] / 10.),
-        #          fontdict={'weight': 'bold', 'size': 9})
-        plt.plot(X[i, 0], X[i, 1], 'o', c='red',markersize=1)
+    # for i in range(X.shape[0]):
+    # plt.text(X[i, 0], X[i, 1], str(y[i]),
+    #          color=plt.cm.Set1(y[i] / 10.),
+    #          fontdict={'weight': 'bold', 'size': 9})
+    plt.plot(X[:, 0], X[:, 1], 'o', c='red', markersize=1)
     #          markeredgecolor='k', markersize=3)
 
-    # if hasattr(offsetbox, 'AnnotationBbox'):
-    #     # only print thumbnails with matplotlib > 1.0
-    #     shown_images = np.array([[1., 1.]])  # just something big
-    #     for i in range(X.shape[0]):
-    #         dist = np.sum((X[i] - shown_images) ** 2, 1)
-    #         if np.min(dist) < 4e-3:
-    #             # don't show points that are too close
-    #             continue
-    #         shown_images = np.r_[shown_images, [X[i]]]
-    #         imagebox = offsetbox.AnnotationBbox(
-    #             offsetbox.OffsetImage(digits.images[i], cmap=plt.cm.gray_r),
-    #             X[i])
-    #         ax.add_artist(imagebox)
+    if hasattr(offsetbox, 'AnnotationBbox'):
+        # only print thumbnails with matplotlib > 1.0
+        shown_images = np.array([[1., 1.]])  # just something big
+        for i in range(X.shape[0]):
+            dist = np.sum((X[i] - shown_images) ** 2, 1)
+            if np.min(dist) < 4e-3:
+                # don't show points that are too close
+                continue
+            shown_images = np.r_[shown_images, [X[i]]]
+            img = cv2.imread(os.path.join(IMG_ROOT, X_IMG[i]))
+            img = cv2.resize(img, (300, 300))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            imagebox = offsetbox.AnnotationBbox(
+                offsetbox.OffsetImage(img), X[i])
+            ax.add_artist(imagebox)
     plt.xticks([]), plt.yticks([])
     if title is not None:
         plt.title(title)
@@ -118,7 +124,7 @@ plot_embedding(X_pca,
 # Isomap projection of the digits dataset
 print("Computing Isomap projection")
 t0 = time()
-X_iso = manifold.Isomap(n_neighbors=n_neighbors, n_components=2,n_jobs=16
+X_iso = manifold.Isomap(n_neighbors=n_neighbors, n_components=2, n_jobs=16
                         ).fit_transform(X)
 print("Done.")
 plot_embedding(X_iso,
@@ -217,7 +223,8 @@ plot_embedding(X_se,
 # ----------------------------------------------------------------------
 # t-SNE embedding of the digits dataset
 print("Computing t-SNE embedding")
-tsne = manifold.TSNE(n_components=2, init='pca', random_state=0,n_jobs=16,perplexity=100)
+tsne = manifold.TSNE(n_components=2, init='pca',
+                     random_state=0, n_jobs=16, perplexity=100)
 t0 = time()
 X_tsne = tsne.fit_transform(X)
 
