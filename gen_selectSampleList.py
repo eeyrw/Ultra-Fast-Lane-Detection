@@ -32,6 +32,7 @@ def plot_embedding(X, labels, imgPathList, title=None):
     # Black removed and is used for noise instead.
     colors = [plt.cm.Spectral(each)
               for each in np.linspace(0, 1, len(unique_labels))]
+    colors.append([0.7, 0.7, 0.7])  # for noise
 
     # matplotlib.rcParams['agg.path.chunksize'] = 10000
     # matplotlib.rcParams.update(matplotlib.rc_params())
@@ -69,7 +70,8 @@ def plot_embedding(X, labels, imgPathList, title=None):
         shown_images = np.r_[shown_images, [X[i]]]
         img = cv2.imread(imgPathList[i])
         img = cv2.resize(img, (120, 68))
-        img = cv2.rectangle(img, (0, 0), (120, 68), colors[i][::-1], 10)
+        img = cv2.rectangle(img, (0, 0), (120, 68),
+                            colors[labels[i]][::-1], 10)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         imagebox = offsetbox.AnnotationBbox(
             offsetbox.OffsetImage(img), X[i])
