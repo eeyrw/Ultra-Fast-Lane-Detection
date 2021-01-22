@@ -30,9 +30,9 @@ def plot_embedding(X, labels, imgPathList, title=None):
     unique_labels = set(labels)
 
     # Black removed and is used for noise instead.
-    colors = [plt.cm.Spectral(each)
+    colors = [tuple((np.array(plt.cm.Spectral(each)[0:3])*255).astype('uint8'))
               for each in np.linspace(0, 1, len(unique_labels))]
-    colors.append([0.7, 0.7, 0.7])  # for noise
+    colors.append((10, 10, 10))  # for noise
 
     # matplotlib.rcParams['agg.path.chunksize'] = 10000
     # matplotlib.rcParams.update(matplotlib.rc_params())
