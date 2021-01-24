@@ -109,7 +109,7 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
             train_datasets = split_dataset(train_dataset, split_proportion)
         else:
             with open(extra_split_list, 'r') as f:
-                split_list = f.readlines()
+                split_list = f.read().splitlines()
             train_datasets = split_dataset_by_list(
                 train_dataset, split_list)
 

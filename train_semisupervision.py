@@ -192,7 +192,7 @@ def getVariousLoader(args, cfg):
         cfg.NETWORK.USE_AUX, distributed,
         cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION,
         split=True, split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
-        extra_split_list=cfg.EXTRA_SPLIT_LIST,
+        extra_split_list=cfg.DATASET.EXTRA_SPLIT_LIST,
         load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY,
         num_workers=cfg.DATASET.NUM_WORKERS
     )
@@ -203,7 +203,7 @@ def getVariousLoader(args, cfg):
         cfg.NETWORK.USE_AUX, distributed,
         cfg.DATASET.NUM_LANES, cfg.DATASET.TRAIN_PROPORTION,
         split=True, split_proportion=cfg.DATASET.SEMI_SUPERVISION_SPLIT,
-        extra_split_list=cfg.EXTRA_SPLIT_LIST,
+        extra_split_list=cfg.DATASET.EXTRA_SPLIT_LIST,
         load_name=True, pin_memory=cfg.DATASET.PIN_MEMORY,
         num_workers=cfg.DATASET.NUM_WORKERS
     )
@@ -235,6 +235,8 @@ def getOptimizerAndSchedulerAndResumeEpoch(paramSet, net, loader, cfg):
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
+    torch.manual_seed(42)
+    np.random.seed(42)
 
     args, cfg = merge_yacs_config()
 
@@ -293,7 +295,7 @@ if __name__ == "__main__":
             logger.add_scalar('test_summary/%s' % metricName,
                               metricValue, global_step=0)
 
-    for grandIterNum in range(1, 20):
+    for grandIterNum in range(1, 1):
         # Step1: Generate pseudo gt from teacher network
         dist_print(
             'Iteration %d Step 1: Generate pseudo gt from teacher network' % grandIterNum)
