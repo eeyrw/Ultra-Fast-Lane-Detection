@@ -4,42 +4,117 @@ from collections import defaultdict, namedtuple
 from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
-event_filename = 'Ultra-Fast-Lane-Detection\events.out.tfevents.1606619470.gpu01.38411.0'
+from matplotlib.offsetbox import (TextArea, DrawingArea, OffsetImage,
+                                  AnnotationBbox)
+
+logs = [
+    {'name': 'tusimple_semi_0.05',
+        'path': './experiment_log/semi_tusimple_finished_20iter_0.05'},
+    {'name': 'tusimple_semi_0.1',
+        'path': './experiment_log/semi_tusimple_finished_20iter_0.1'},
+    {'name': 'tusimple_semi_0.2',
+        'path': './experiment_log/semi_tusimple_finished_20iter_0.2'},
+    # {'name': 'culane_train_0.5_semi_0.05',
+    #          'path': './experiment_log/semi_culane_finished_train_0.5_20iter_0.05'}
+]
 
 
-def getID(cat, name, iter=0, step=0):
-    return '%s_%s/%s_%d_S%d' % (cat, name, name, iter, step)
+def readExprLog(logDictList):
+    logGroupDict = {}
+    for logInfo in logDictList:
+        name = logInfo['name']
+        path = logInfo['path']
+        infoDict = defaultdict(list)
+        serialized_examples = tf.data.TFRecordDataset(path)
+        for serialized_example in serialized_examples:
+            event = event_pb2.Event.FromString(serialized_example.numpy())
+            for value in event.summary.value:
+                infoDict[value.tag].append((event.step, value.simple_value))
+        logGroupDict[name] = dict(infoDict)
+    return logGroupDict
 
 
-def make_plot(data, epoch):
-    fig, ax = plt.subplots(constrained_layout=True)
-    data = np.array(data)
-    epoch = np.array(epoch)
-    ax.plot(data[:, 0], data[:, 1])
-    ax.set_xlabel('Iteration Times')
-    ax.set_ylabel('Accuracy')
-    ax.set_title('Iter 0 Step 0')
+def getLogDataWithMultiStep(logGroupDict, group, cat, name, iter=0, step=0):
+    return logGroupDict[group]['%s_%s/%s_%d_S%d' % (cat, name, name, iter, step)]
 
-    def deg2rad(x):
-        return np.interp(x, epoch[:, 0], epoch[:, 1])
 
-    def rad2deg(x):
-        return np.interp(x, epoch[:, 1], epoch[:, 0])
+def getLogDataSummary(logGroupDict, group, cat, name):
+    return logGroupDict[group]['%s_summary/%s' % (cat, name)]
 
-    secax = ax.secondary_xaxis('top', functions=(deg2rad, rad2deg))
-    secax.set_xlabel('Epoch')
+
+def make_plot(dataList, labelList, iterEpoch, xlabel, ylabel, title):
+    markerList = ['x', 'o', 's']
+    fig, ax = plt.subplots(figsize=(4, 2.7), constrained_layout=True)
+
+    for data, label, marker in zip(dataList, labelList, markerList):
+        data = np.array(data)
+        ax.plot(data[:, 0], data[:, 1], label=label, marker=marker, alpha=0.7)
+
+        # Annotate the 1st position with a text box ('Test 1')
+        offsetbox = TextArea('%.3f' % data[0, 1], minimumdescent=False)
+
+        ab = AnnotationBbox(offsetbox, (data[0, 0], data[0, 1]),
+                            xybox=(30, 15),
+                            xycoords='data',
+                            boxcoords="offset points",
+                            arrowprops=dict(arrowstyle="->"))
+
+        ax.add_artist(ab)
+
+    ax.legend()
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+
+    if iterEpoch is not None:
+        iterEpoch = np.array(iterEpoch)
+
+        def iter2Epoch(x):
+            return np.interp(x, iterEpoch[:, 0], iterEpoch[:, 1])
+
+        def epoch2Iter(x):
+            return np.interp(x, iterEpoch[:, 1], iterEpoch[:, 0])
+
+        secax = ax.secondary_xaxis('top', functions=(iter2Epoch, epoch2Iter))
+        secax.set_xlabel('Epoch')
+    plt.savefig(title+'.pdf')
     plt.show()
 
 
-infoDict = defaultdict(list)
-serialized_examples = tf.data.TFRecordDataset(event_filename)
-for serialized_example in serialized_examples:
-    event = event_pb2.Event.FromString(serialized_example.numpy())
-    for value in event.summary.value:
-        #t = tf.make_ndarray(value.tensor)
-        # print(value.tag, event.step, value.simple_value)
-        infoDict[value.tag].append((event.step, value.simple_value))
-infoDict = dict(infoDict)
+logGroupDict = readExprLog(logs)
 
-make_plot(infoDict[getID('loss', 'aux_loss', 4, 2)],
-          infoDict[getID('meta', 'epoch', 4, 2)])
+
+dataList = [
+    getLogDataSummary(logGroupDict, 'tusimple_semi_0.05', 'test', 'Accuracy'),
+    getLogDataSummary(logGroupDict, 'tusimple_semi_0.1', 'test', 'Accuracy'),
+    getLogDataSummary(logGroupDict, 'tusimple_semi_0.2', 'test', 'Accuracy')
+]
+
+labalList = [
+    '0.05 of full dataset',
+    '0.1 of full dataset',
+    '0.2 of full dataset'
+]
+
+dataList2 = [
+    getLogDataSummary(logGroupDict, 'tusimple_semi_0.05', 'test', 'FN'),
+    getLogDataSummary(logGroupDict, 'tusimple_semi_0.1', 'test', 'FN'),
+    getLogDataSummary(logGroupDict, 'tusimple_semi_0.2', 'test', 'FN')
+]
+
+dataList3 = [
+    getLogDataSummary(logGroupDict, 'tusimple_semi_0.05', 'test', 'FP'),
+    getLogDataSummary(logGroupDict, 'tusimple_semi_0.1', 'test', 'FP'),
+    getLogDataSummary(logGroupDict, 'tusimple_semi_0.2', 'test', 'FP')
+]
+
+# iterEpoch = getLogDataWithMultiStep(
+#     logGroupDict, 'tusimple_semi_0.05', 'meta', 'epoch', 4, 2)
+
+make_plot(dataList, labalList, None,
+          'Iteration', 'Accuracy', 'Accuracy')
+make_plot(dataList2, labalList, None,
+          'Iteration', 'FN', 'FN')
+make_plot(dataList3, labalList, None,
+          'Iteration', 'FP', 'FP')
+
