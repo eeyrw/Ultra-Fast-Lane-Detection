@@ -14,8 +14,8 @@ logs = [
         'path': './experiment_log/semi_tusimple_finished_20iter_0.1'},
     {'name': 'tusimple_semi_0.2',
         'path': './experiment_log/semi_tusimple_finished_20iter_0.2'},
-    # {'name': 'culane_train_0.5_semi_0.05',
-    #          'path': './experiment_log/semi_culane_finished_train_0.5_20iter_0.05'}
+    {'name': 'culane_train_0.5_semi_0.05',
+        'path': './experiment_log/semi_culane_finished_train_0.5_20iter_0.05'}
 ]
 
 
@@ -49,11 +49,15 @@ def getDataList(logGroupDict, group, cat, name, step, iters):
 def make_plot_no_marker(dataList, labelList, iterEpoch, xlabel, ylabel, title):
     fig, ax = plt.subplots(figsize=(4, 2.7), constrained_layout=True)
     alphalist = np.linspace(0.1, 1, len(dataList))
-    for data, label, alpha, linew in zip(dataList, labelList, alphalist, np.flip(alphalist)):
-        data = np.array(data)
-        y_smoothed = gaussian_filter1d(data[:, 1], sigma=0.1)
-        ax.plot(data[:, 0], y_smoothed, color='red',
-                label=label, linewidth=linew*5, alpha=alpha)
+    i = 0
+    # for data, label, alpha, linew in zip(dataList, labelList, alphalist, np.flip(alphalist)):
+    #data = np.array(data)
+    #y_smoothed = gaussian_filter1d(data[:, 1], sigma=0.1)
+    # ax.plot(data[:, 0], y_smoothed, color='red',
+    #        label=label, linewidth=linew*5, alpha=alpha)
+    p = [np.array(data)[:, 1] for data in dataList]
+    ax.violinplot(p, widths=0.8, showmeans=True,
+                  showmedians=True, bw_method=0.5)
     # plt.yscale("log")
     # ax.legend()
 
@@ -61,17 +65,17 @@ def make_plot_no_marker(dataList, labelList, iterEpoch, xlabel, ylabel, title):
     ax.set_ylabel(ylabel)
     ax.set_title(title)
 
-    if iterEpoch is not None:
-        iterEpoch = np.array(iterEpoch)
+    # if iterEpoch is not None:
+    #     iterEpoch = np.array(iterEpoch)
 
-        def iter2Epoch(x):
-            return np.interp(x, iterEpoch[:, 0], iterEpoch[:, 1])
+    #     def iter2Epoch(x):
+    #         return np.interp(x, iterEpoch[:, 0], iterEpoch[:, 1])
 
-        def epoch2Iter(x):
-            return np.interp(x, iterEpoch[:, 1], iterEpoch[:, 0])
+    #     def epoch2Iter(x):
+    #         return np.interp(x, iterEpoch[:, 1], iterEpoch[:, 0])
 
-        secax = ax.secondary_xaxis('top', functions=(iter2Epoch, epoch2Iter))
-        secax.set_xlabel('Epoch')
+    #     secax = ax.secondary_xaxis('top', functions=(iter2Epoch, epoch2Iter))
+    #     secax.set_xlabel('Epoch')
     plt.savefig(title+'.pdf')
     plt.show()
 
@@ -130,32 +134,32 @@ labalList = [
     '0.2 of full dataset'
 ]
 
-dataList2 = [
-    getLogDataSummary(logGroupDict, 'tusimple_semi_0.05', 'test', 'FN'),
-    getLogDataSummary(logGroupDict, 'tusimple_semi_0.1', 'test', 'FN'),
-    getLogDataSummary(logGroupDict, 'tusimple_semi_0.2', 'test', 'FN')
-]
+# dataList2 = [
+#     getLogDataSummary(logGroupDict, 'tusimple_semi_0.05', 'test', 'FN'),
+#     getLogDataSummary(logGroupDict, 'tusimple_semi_0.1', 'test', 'FN'),
+#     getLogDataSummary(logGroupDict, 'tusimple_semi_0.2', 'test', 'FN')
+# ]
 
-dataList3 = [
-    getLogDataSummary(logGroupDict, 'tusimple_semi_0.05', 'test', 'FP'),
-    getLogDataSummary(logGroupDict, 'tusimple_semi_0.1', 'test', 'FP'),
-    getLogDataSummary(logGroupDict, 'tusimple_semi_0.2', 'test', 'FP')
-]
+# dataList3 = [
+#     getLogDataSummary(logGroupDict, 'tusimple_semi_0.05', 'test', 'FP'),
+#     getLogDataSummary(logGroupDict, 'tusimple_semi_0.1', 'test', 'FP'),
+#     getLogDataSummary(logGroupDict, 'tusimple_semi_0.2', 'test', 'FP')
+# ]
 
-# iterEpoch = getLogDataWithMultiStep(
-#     logGroupDict, 'tusimple_semi_0.05', 'meta', 'epoch', 4, 2)
+# # iterEpoch = getLogDataWithMultiStep(
+# #     logGroupDict, 'tusimple_semi_0.05', 'meta', 'epoch', 4, 2)
 
-make_plot(dataList, labalList, None,
-          'Iteration', 'Accuracy', 'Accuracy')
-make_plot(dataList2, labalList, None,
-          'Iteration', 'FN', 'FN')
-make_plot(dataList3, labalList, None,
-          'Iteration', 'FP', 'FP')
+# make_plot(dataList, labalList, None,
+#           'Iteration', 'Accuracy', 'Accuracy')
+# make_plot(dataList2, labalList, None,
+#           'Iteration', 'FN', 'FN')
+# make_plot(dataList3, labalList, None,
+#           'Iteration', 'FP', 'FP')
 
 epch = getLogDataWithMultiStep(
-    logGroupDict, 'tusimple_semi_0.1', 'meta', 'epoch', 1, 3)
-dl = getDataList(logGroupDict, 'tusimple_semi_0.1',
-                 'metric', 'iou', 3, range(1, 19))
+    logGroupDict, 'culane_train_0.5_semi_0.05', 'meta', 'epoch', 1, 3)
+dl = getDataList(logGroupDict, 'culane_train_0.5_semi_0.05',
+                 'test', 'F1measure', 2, range(1, 19))
 ll = ['iter %d' % i for i in range(1, 19)]
 make_plot_no_marker(dl, ll, epch,
                     'Iteration', 'XX', 'XXXX')
