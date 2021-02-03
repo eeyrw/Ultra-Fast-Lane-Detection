@@ -295,44 +295,49 @@ if __name__ == "__main__":
             logger.add_scalar('test_summary/%s' % metricName,
                               metricValue, global_step=0)
 
-    for grandIterNum in range(1, 1):
-        # Step1: Generate pseudo gt from teacher network
-        dist_print(
-            'Iteration %d Step 1: Generate pseudo gt from teacher network' % grandIterNum)
-        net_teacher = net_teacher.cuda()
-        genPseudoGt(net_teacher, pseudo_gen_loader, cfg.DATASET.ROOT, cfg.DATASET.RAW_IMG_SIZE,
-                    "train_pseudo_gt.txt",  "pseudo_clips_gt_%s" % currentDateTime, grandIterNum,
-                    multiproc_num=8, use_multiproc=False)
-        pseudo_annotated_loader = getPseudoAnnotatedLoader(args, cfg)
-        net_teacher = net_teacher.cpu()
+    for grandIterNum in range(1, cfg.SEMI_SPVSR.ITER_NUM):
+        if 1 in cfg.SEMI_SPVSR.INCLUE_STEPS:
+            # Step1: Generate pseudo gt from teacher network
+            dist_print(
+                'Iteration %d Step 1: Generate pseudo gt from teacher network' % grandIterNum)
+            net_teacher = net_teacher.cuda()
+            genPseudoGt(net_teacher, pseudo_gen_loader, cfg.DATASET.ROOT, cfg.DATASET.RAW_IMG_SIZE,
+                        "train_pseudo_gt.txt",  "pseudo_clips_gt_%s" % currentDateTime, grandIterNum,
+                        multiproc_num=8, use_multiproc=False)
+            pseudo_annotated_loader = getPseudoAnnotatedLoader(args, cfg)
+            net_teacher = net_teacher.cpu()
 
-        dist_print(
-            'Iteration %d Step 2: Train student network with pseduo gt' % grandIterNum)
-        # Step2: Train student network with pseduo gt
-        net_student = net_student.cuda()
-        optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
-            'TRAIN_PSEUDO', net_student, pseudo_annotated_loader, cfg)
-        bestMetrics, _ = train_proc(net_student, optmzr, scdulr, pseudo_annotated_loader,
-                                    args, cfg, logger, bestMetrics, resume_epoch,
-                                    '%d_S2' % grandIterNum, paramSet='TRAIN_PSEUDO')
+        if 2 in cfg.SEMI_SPVSR.INCLUE_STEPS:
+            dist_print(
+                'Iteration %d Step 2: Train student network with pseduo gt' % grandIterNum)
+            # Step2: Train student network with pseduo gt
+            net_student = net_student.cuda()
+            optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
+                'TRAIN_PSEUDO', net_student, pseudo_annotated_loader, cfg)
+            bestMetrics, _ = train_proc(net_student, optmzr, scdulr, pseudo_annotated_loader,
+                                        args, cfg, logger, bestMetrics, resume_epoch,
+                                        '%d_S2' % grandIterNum, paramSet='TRAIN_PSEUDO')
 
-        # Step3: Finetune student network with mannually annotated sample
-        dist_print(
-            'Iteration %d Step 3: Finetune student network with mannually annotated sample' % grandIterNum)
-        optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
-            'TRAIN_FINETUNE', net_student, annotated_loader, cfg)
-        bestMetrics, _ = train_proc(net_student, optmzr, scdulr, annotated_loader,
-                                    args, cfg, logger, bestMetrics, resume_epoch,
-                                    '%d_S3' % grandIterNum, paramSet='TRAIN_FINETUNE')
-        net_student = net_student.cpu()
+        if 3 in cfg.SEMI_SPVSR.INCLUE_STEPS:
+            # Step3: Finetune student network with mannually annotated sample
+            dist_print(
+                'Iteration %d Step 3: Finetune student network with mannually annotated sample' % grandIterNum)
+            optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
+                'TRAIN_FINETUNE', net_student, annotated_loader, cfg)
+            bestMetrics, _ = train_proc(net_student, optmzr, scdulr, annotated_loader,
+                                        args, cfg, logger, bestMetrics, resume_epoch,
+                                        '%d_S3' % grandIterNum, paramSet='TRAIN_FINETUNE')
+            net_student = net_student.cpu()
 
         if bestMetrics is not None:
             for metricName, metricValue in bestMetrics.items():
                 logger.add_scalar('test_summary/%s' % metricName,
                                   metricValue, global_step=grandIterNum)
-        # Step4: Exchange network
-        dist_print(
-            'Iteration %d Step 4: Exchange weights of teacher network and student network' % grandIterNum)
-        net_teacher, net_student = net_student, net_teacher
+
+        if 4 in cfg.SEMI_SPVSR.INCLUE_STEPS:                                  
+            # Step4: Exchange network
+            dist_print(
+                'Iteration %d Step 4: Exchange weights of teacher network and student network' % grandIterNum)
+            net_teacher, net_student = net_student, net_teacher
 
     logger.close()
