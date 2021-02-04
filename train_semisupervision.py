@@ -283,12 +283,13 @@ if __name__ == "__main__":
     bestMetrics = None
     logger.add_text('configuration', str(cfg))
 
-    net_teacher = net_teacher.cuda()
-    optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
-        'TRAIN', net_teacher, annotated_loader, cfg)
-    bestMetrics, _ = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
-                                args, cfg, logger, bestMetrics, resume_epoch,
-                                '0_S0', paramSet='TRAIN')
+    if 0 in cfg.SEMI_SPVSR.INCLUE_STEPS:
+        net_teacher = net_teacher.cuda()
+        optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
+            'TRAIN', net_teacher, annotated_loader, cfg)
+        bestMetrics, _ = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
+                                    args, cfg, logger, bestMetrics, resume_epoch,
+                                    '0_S0', paramSet='TRAIN')
 
     if bestMetrics is not None:
         for metricName, metricValue in bestMetrics.items():
@@ -322,6 +323,7 @@ if __name__ == "__main__":
             # Step3: Finetune student network with mannually annotated sample
             dist_print(
                 'Iteration %d Step 3: Finetune student network with mannually annotated sample' % grandIterNum)
+            net_student = net_student.cuda()
             optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
                 'TRAIN_FINETUNE', net_student, annotated_loader, cfg)
             bestMetrics, _ = train_proc(net_student, optmzr, scdulr, annotated_loader,
