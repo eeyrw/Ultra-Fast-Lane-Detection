@@ -336,10 +336,16 @@ if __name__ == "__main__":
                 logger.add_scalar('test_summary/%s' % metricName,
                                   metricValue, global_step=grandIterNum)
 
-        if 4 in cfg.SEMI_SPVSR.INCLUE_STEPS:                                  
+        if 4 in cfg.SEMI_SPVSR.INCLUE_STEPS:
             # Step4: Exchange network
-            dist_print(
-                'Iteration %d Step 4: Exchange weights of teacher network and student network' % grandIterNum)
-            net_teacher, net_student = net_student, net_teacher
-
+            if cfg.SEMI_SPVSR.STEP4_SCHEME == 'exchange':
+                dist_print(
+                    'Iteration %d Step 4: Exchange weights of teacher network and student network' % grandIterNum)
+                net_teacher, net_student = net_student, net_teacher
+            elif cfg.SEMI_SPVSR.STEP4_SCHEME == 'overwrite':
+                dist_print(
+                    'Iteration %d Step 4: Overwrite weights of teacher network by student network' % grandIterNum)
+                net_teacher = net_student
+            else:
+                raise RuntimeError('Wrong STEP 4 scheme!!')
     logger.close()
