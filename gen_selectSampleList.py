@@ -18,7 +18,7 @@ dsInfoCULane = {'embeddingFile': 'DatasetEmbedding_CULane.pkl',
 dsInfoTusimple = {
     'embeddingFile': 'DatasetEmbedding_Tusimple.pkl', 'imgRoot': r'E:\Tusimple'}
 
-datasetInfo = dsInfoTusimple
+datasetInfo = dsInfoCULane
 
 
 def plot_embedding(X, labels, imgPathList, title=None):

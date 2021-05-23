@@ -2,9 +2,10 @@ import torch
 from model.backbone import resnet
 from model.spp import SPPLayer
 from model.fast_scnn import FastSCNN
+from model.efficientnetv2 import effnetv2_s
 import numpy as np
 
-validBackbones = ['fast_scnn', 'res18', 'res34', 'res50', 'res101',
+validBackbones = ['effnetv2', 'fast_scnn', 'res18', 'res34', 'res50', 'res101',
                   'res152', '50next', '101next', '50wide', '101wide']
 
 
@@ -50,9 +51,9 @@ class parsingNet(torch.nn.Module):
             self.interPoolChnNum = 8*100*36//16
 
             self.cls = torch.nn.Sequential(
-                torch.nn.Linear(self.interPoolChnNum, 512),
+                torch.nn.Linear(self.interPoolChnNum, 1024),
                 torch.nn.ReLU(),
-                torch.nn.Linear(512, self.total_dim),
+                torch.nn.Linear(1024, self.total_dim),
             )
             # 1/32,2048 channel
             # 288,800 -> 9,40,2048
@@ -61,6 +62,26 @@ class parsingNet(torch.nn.Module):
             initialize_weights(self.model)
             initialize_weights(self.cls)
 
+        elif self.backbone == 'effnetv2':
+            self.model = effnetv2_s(
+                segOutChanNum=5, segOut=use_aux, segOutSize=(36, 100), midFeature=True)
+
+            self.pool = torch.nn.Sequential(
+                torch.nn.AvgPool2d(4)
+            )
+            self.interPoolChnNum = 272*(25//4)*(9//4)
+
+            self.cls = torch.nn.Sequential(
+                # torch.nn.Linear(self.interPoolChnNum, 512),
+                # torch.nn.ReLU(),
+                torch.nn.Linear(self.interPoolChnNum, self.total_dim),
+            )
+            # 1/32,2048 channel
+            # 288,800 -> 9,40,2048
+            # (w+1) * sample_rows * 4
+            # 37 * 10 * 4
+            initialize_weights(self.model)
+            initialize_weights(self.cls)
         else:
             # input : nchw,
             # output: (w+1) * sample_rows * 4
@@ -116,6 +137,24 @@ class parsingNet(torch.nn.Module):
         # n c h w - > n 2048 sh sw
         # -> n 2048
         if self.backbone == 'fast_scnn':
+            if self.use_aux:
+                aux_seg, fea = self.model(x)
+            else:
+                fea = self.model(x)[0]
+
+            fea = self.pool(fea)
+            mid_fea = fea.view(-1, self.interPoolChnNum)
+
+            group_cls = self.cls(mid_fea)
+            group_cls = group_cls.view(-1, *self.cls_dim)
+
+            if self.use_aux:
+                return group_cls, aux_seg
+            if self.use_mid_aux:
+                return group_cls, mid_fea
+
+            return group_cls
+        elif self.backbone == 'effnetv2':
             if self.use_aux:
                 aux_seg, fea = self.model(x)
             else:
