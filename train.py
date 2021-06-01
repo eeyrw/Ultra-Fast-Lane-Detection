@@ -94,6 +94,9 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
                 img_w, img_h = 1280, 720
                 row_anchor = tusimple_row_anchor
 
+            if 'seg_out' not in results:
+                results['seg_out'] = [None]
+
             logSegLabelImage(logger,
                              'predImg',
                              global_sample_iter,
@@ -168,7 +171,9 @@ if __name__ == "__main__":
     )
 
     net = parsingNet(pretrained=True, backbone=cfg.NETWORK.BACKBONE, cls_dim=(
-        cfg.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg.DATASET.NUM_LANES), use_aux=cfg.NETWORK.USE_AUX, use_spp=cfg.NETWORK.USE_SPP).cuda()
+        cfg.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg.DATASET.NUM_LANES), 
+        use_aux=cfg.NETWORK.USE_AUX, use_spp=cfg.NETWORK.USE_SPP, 
+        use_attn = cfg.NETWORK.USE_ATTN, use_resa = cfg.NETWORK.USE_RESA).cuda()
 
     if distributed:
         net = torch.nn.parallel.DistributedDataParallel(

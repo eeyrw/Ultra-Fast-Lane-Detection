@@ -3,6 +3,8 @@ from model.backbone import resnet
 from model.spp import SPPLayer
 from model.fast_scnn import FastSCNN
 from model.efficientnetv2 import effnetv2_s
+from model.selfAttention import Self_Attn
+from model.resa import RESA
 import numpy as np
 
 validBackbones = ['effnetv2', 'fast_scnn', 'res18', 'res34', 'res50', 'res101',
@@ -25,7 +27,8 @@ class conv_bn_relu(torch.nn.Module):
 
 
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', cls_dim=(37, 10, 4), use_aux=False, use_spp=False, use_mid_aux=False):
+    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', cls_dim=(37, 10, 4), 
+    use_aux=False, use_spp=False, use_attn=False, use_resa=False, use_mid_aux=False):
         super(parsingNet, self).__init__()
 
         self.size = size
@@ -36,6 +39,8 @@ class parsingNet(torch.nn.Module):
         # num_cls_per_lane is the number of row anchors
         self.use_aux = use_aux
         self.use_spp = use_spp
+        self.use_attn = use_attn
+        self.use_resa = use_resa
         self.use_mid_aux = use_mid_aux
         self.total_dim = np.prod(cls_dim)
         self.backbone = backbone
@@ -119,11 +124,18 @@ class parsingNet(torch.nn.Module):
 
             self.interPoolChnNum = 1800
 
-            self.cls = torch.nn.Sequential(
-                torch.nn.Linear(self.interPoolChnNum, 2048),
-                torch.nn.ReLU(),
-                torch.nn.Linear(2048, self.total_dim),
-            )
+            if self.use_attn:
+                self.cls = torch.nn.Sequential(
+                    torch.nn.Linear(self.interPoolChnNum, 128),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(128, self.total_dim),
+                )
+            else:
+                self.cls = torch.nn.Sequential(
+                    torch.nn.Linear(self.interPoolChnNum, 2048),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(2048, self.total_dim),
+                )
 
             self.pool = torch.nn.Conv2d(512, 8, 1) if backbone in [
                 'res34', 'res18'] else torch.nn.Conv2d(2048, 8, 1)
@@ -132,6 +144,19 @@ class parsingNet(torch.nn.Module):
             # (w+1) * sample_rows * 4
             # 37 * 10 * 4
             initialize_weights(self.cls)
+
+            if self.use_attn:
+                self.selfAttn = Self_Attn(512)
+                initialize_weights(self.selfAttn)
+
+            if self.use_resa:
+                self.resa = RESA(512,9,25)
+                initialize_weights(self.resa)
+
+            self.avgPool = torch.nn.Sequential(torch.nn.Conv2d(512, self.total_dim, 1),
+                                               torch.nn.ReLU(),
+                                               torch.nn.AdaptiveAvgPool2d((1, 1)))
+            initialize_weights(self.avgPool)
 
     def forward(self, x):
         # n c h w - > n 2048 sh sw
@@ -188,10 +213,18 @@ class parsingNet(torch.nn.Module):
             else:
                 aux_seg = None
 
+            if self.use_attn:
+                fea = self.selfAttn(fea)[0]
+
+            if self.use_resa:
+                fea = self.resa(fea)                
+
             fea = self.pool(fea)
             mid_fea = fea.view(-1, self.interPoolChnNum)
 
             group_cls = self.cls(mid_fea)
+
+            # group_cls = self.avgPool(fea)
             group_cls = group_cls.view(-1, *self.cls_dim)
 
             if self.use_aux:

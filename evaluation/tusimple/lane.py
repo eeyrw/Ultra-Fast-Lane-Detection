@@ -63,6 +63,7 @@ class LaneEval(object):
             raise Exception('We do not get the predictions of all the test tasks')
         gts = {l['raw_file']: l for l in json_gt}
         accuracy, fp, fn = 0., 0., 0.
+        testDetailResult = []
         for pred in json_pred:
             if 'raw_file' not in pred or 'lanes' not in pred or 'run_time' not in pred:
                 raise Exception('raw_file or lanes or run_time not in some predictions.')
@@ -76,6 +77,8 @@ class LaneEval(object):
             y_samples = gt['h_samples']
             try:
                 a, p, n = LaneEval.bench(pred_lanes, gt_lanes, y_samples, run_time)
+                testDetailResult.append({'acc': a, 'fp': p, 'fn': n, 'pred_lanes': pred_lanes,
+                                         'gt_lanes': gt_lanes, 'y_samples': y_samples,'raw_file':raw_file})
             except BaseException as e:
                 raise Exception('Format of lanes error.')
             accuracy += a
@@ -86,7 +89,8 @@ class LaneEval(object):
         return json.dumps([
             {'name': 'Accuracy', 'value': accuracy / num, 'order': 'desc'},
             {'name': 'FP', 'value': fp / num, 'order': 'asc'},
-            {'name': 'FN', 'value': fn / num, 'order': 'asc'}
+            {'name': 'FN', 'value': fn / num, 'order': 'asc'},
+            {'name': 'testDetailResult', 'value': testDetailResult}
         ])
 
 

@@ -2,12 +2,14 @@
 from data.dataloader import get_test_loader
 from evaluation.tusimple.lane import LaneEval
 from utils.dist_utils import is_main_process, dist_print, get_rank, get_world_size, dist_tqdm, synchronize
+from data.constant import lane_index_colour
 import os
 import json
 import torch
 import scipy
 import numpy as np
 import platform
+import cv2
 
 
 def generate_lines(out, shape, names, output_path, griding_num, localization_type='abs', flip_updown=False):
@@ -142,14 +144,73 @@ def combine_tusimple_test(work_dir, exp_name):
     with open(output_path, 'w') as fp:
         fp.writelines(all_res_no_dup)
 
+def createVisualTestImage(data_root,result):
+    clipDir = os.path.dirname(result['raw_file'])
+    raw_file_path = os.path.join(data_root, result['raw_file'])
+    testResultImagePath = os.path.join(data_root, os.path.join(clipDir,'test.webp'))   
+    img_bgr = cv2.imread(raw_file_path)
+
+    for laneIndex, gtLaneXPoints in enumerate(result['gt_lanes'], 0):
+        laneLabelColor = lane_index_colour[laneIndex+1]
+        laneLabelColor = (int(
+                    laneLabelColor[2]), int(laneLabelColor[1]), int(laneLabelColor[0]))# rgb to bgr
+        curveVertices = list(filter(lambda xyPair: xyPair[0] > 0, zip(
+            gtLaneXPoints, result['y_samples'])))
+
+        for vertex1, vertex2 in zip(curveVertices[:-1], curveVertices[1:]):
+            cv2.line(img_bgr, tuple(vertex1),
+                    tuple(vertex2), (int(255), int(92), int(178)), 1)
+
+        for node in curveVertices:
+            cv2.circle(img_bgr, tuple(node), 6, (int(255),int(255),int(255)), -1)
+            cv2.circle(img_bgr, tuple(node), 4, (int(laneLabelColor[0]), int(
+                laneLabelColor[1]), int(laneLabelColor[2])), -1)
+
+    for laneIndex, predLaneXPoints in enumerate(result['pred_lanes'], 0):
+        laneLabelColor = lane_index_colour[laneIndex+1]
+        laneLabelColor = (
+            laneLabelColor[2], laneLabelColor[1], laneLabelColor[0])  # rgb to bgr
+        curveVertices = list(filter(lambda xyPair: xyPair[0] > 0, zip(predLaneXPoints, result['y_samples'])))
+
+        for vertex1, vertex2 in zip(curveVertices[:-1], curveVertices[1:]):
+            cv2.line(img_bgr, tuple(vertex1),
+                    tuple(vertex2), (int(255), int(92), int(178)), 1)
+
+        for node in curveVertices:
+            cv2.circle(img_bgr, tuple(node), 6, (int(0),int(0),int(0)), -1)
+            cv2.circle(img_bgr, tuple(node), 4, (int(laneLabelColor[0]), int(
+                laneLabelColor[1]), int(laneLabelColor[2])), -1)
+
+    cv2.imwrite(testResultImagePath, img_bgr, [int(cv2.IMWRITE_WEBP_QUALITY), 95])
+    return testResultImagePath
+
+def visualTestResult(dataset, data_root, results):
+    if dataset == 'Tusimple':
+        results.sort(key=lambda x: x['acc'])
+        print('Worst 20:')
+        for i in range(20):
+            result = results[i]
+            visualTestResultImagePath = createVisualTestImage(data_root,result)
+            print('%d. acc:%.5f,fp:%.5f,fn:%.5f file:%s' % (i, result['acc'], result['fp'],
+                                                            result['fn'], visualTestResultImagePath))
+
+        print('Best 20:')
+        for i in range(20):
+            result = results[-(i+1)]
+            visualTestResultImagePath = createVisualTestImage(data_root,result)
+            raw_file_path = os.path.join(data_root, result['raw_file'])
+            print('%d. acc:%.5f,fp:%.5f,fn:%.5f file:%s' % (i, result['acc'], result['fp'],
+                                                            result['fn'], visualTestResultImagePath))
+
 
 def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distributed, lastMetrics=None, proportion=1):
     net.eval()
     metricsDict = {}
     isBetter = True
 
-    if proportion!=1:
-        raise NotImplementedError("Using partial test set is not supporting until now.")
+    if proportion != 1:
+        raise NotImplementedError(
+            "Using partial test set is not supporting until now.")
 
     if dataset == 'CULane':
         run_test(net, data_root, 'culane_eval_tmp', work_dir,
@@ -167,17 +228,17 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
                 FN += val_fn
                 dist_print(k, val)
                 metricsDict[k] = val
-            if (TP + FP)!=0:
+            if (TP + FP) != 0:
                 P = TP * 1.0/(TP + FP)
             else:
                 P = 0
 
-            if (TP + FN)!=0:
+            if (TP + FN) != 0:
                 R = TP * 1.0/(TP + FN)
             else:
-                R = 0     
+                R = 0
 
-            if (P + R)!=0:
+            if (P + R) != 0:
                 F = 2*P*R/(P + R)
             else:
                 F = 0
@@ -202,8 +263,11 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
                 work_dir, exp_name + '.txt'), os.path.join(data_root, 'test_label.json'))
             res = json.loads(res)
             for r in res:
-                dist_print(r['name'], r['value'])
-                metricsDict[r['name']] = r['value']
+                if r['name'] == 'testDetailResult':
+                    visualTestResult(dataset, data_root, r['value'])
+                else:
+                    dist_print(r['name'], r['value'])
+                    metricsDict[r['name']] = r['value']
 
             if lastMetrics is not None and 'Accuracy' in lastMetrics.keys():
                 if metricsDict['Accuracy'] > lastMetrics['Accuracy']:

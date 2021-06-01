@@ -75,23 +75,30 @@ def genSegLabelImage(image, segOutput, size, path, use_label=True, use_color=Fal
 
 
 def logSegLabelImage(logger, tag, step, image, pointOutput, row_anchor, griding_num, cls_num_per_lane, segOutput, size):
-    # segOutput: [class,h,w]
-    segOutput = torch.unsqueeze(torch.unsqueeze(
-        torch.argmax(torch.sigmoid(segOutput), dim=0), 0), 0)
-    # segOutput: [1,1,h,w]
-    plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(
-        segOutput.float(), size=size)).byte().cpu().numpy()
+    if segOutput is not None:
+        # segOutput: [class,h,w]
+        segOutput = torch.unsqueeze(torch.unsqueeze(
+            torch.argmax(torch.sigmoid(segOutput), dim=0), 0), 0)
+        # segOutput: [1,1,h,w]
+        plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(
+            segOutput.float(), size=size)).byte().cpu().numpy()
 
-    image = torch.unsqueeze(image, dim=0)
-    image = torch.squeeze(
-        torch.nn.functional.interpolate(image.float(), size=size))
+        image = torch.unsqueeze(image, dim=0)
+        image = torch.squeeze(
+            torch.nn.functional.interpolate(image.float(), size=size))
 
-    # Step 1. chw to hwc Step 2. RGB to BGR
-    img_bgr = normalizeImage(image).transpose((1, 2, 0))[..., ::-1]
-    colorMapMat = np.array(
-        lane_index_colour, dtype=np.uint8)[..., ::-1]  # RGB to BGR
-    segImage = colorMapMat[plainSegOutput]
-    res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)
+        # Step 1. chw to hwc Step 2. RGB to BGR
+        img_bgr = normalizeImage(image).transpose((1, 2, 0))[..., ::-1]
+        colorMapMat = np.array(
+            lane_index_colour, dtype=np.uint8)[..., ::-1]  # RGB to BGR
+        segImage = colorMapMat[plainSegOutput]
+        res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)
+    else:
+        image = torch.unsqueeze(image, dim=0)
+        image = torch.squeeze(
+            torch.nn.functional.interpolate(image.float(), size=size))
+        img_bgr = normalizeImage(image).transpose((1, 2, 0))[..., ::-1]
+        res = cv2.addWeighted(img_bgr, 1, img_bgr, 0.0, 0.0)
 
     img_h = size[0]
     img_w = size[1]
