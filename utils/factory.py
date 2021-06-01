@@ -1,3 +1,4 @@
+import math
 from utils.loss import SoftmaxFocalLoss, ParsingRelationLoss, ParsingRelationDis
 from utils.metrics import MultiLabelAcc, AccTopk, Metric_mIoU
 from utils.dist_utils import DistSummaryWriter
@@ -25,6 +26,9 @@ def get_scheduler(optimizer, cfg, iters_per_epoch, paramSet='TRAIN'):
     elif cfg[paramSet]['SCHEDULER'] == 'cos':
         scheduler = CosineAnnealingLR(optimizer, cfg[paramSet]['EPOCH'] * iters_per_epoch, eta_min=0,
                                       warmup=cfg[paramSet]['WARMUP_ITERS'], warmup_iters=cfg[paramSet]['WARMUP_ITERS'])
+    elif cfg[paramSet]['SCHEDULER'] == 'cyclic':
+        scheduler = torch.optim.lr_scheduler.CyclicLR(
+            optimizer, base_lr=0.001, max_lr=0.1)
     else:
         raise NotImplementedError
     return scheduler
@@ -104,9 +108,6 @@ class MultiStepLR:
 
             for group, lr in zip(self.optimizer.param_groups, self.base_lr):
                 group['lr'] = lr * (self.gamma ** power)
-
-
-import math
 
 
 class CosineAnnealingLR:
