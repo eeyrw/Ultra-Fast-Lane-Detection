@@ -173,7 +173,8 @@ if __name__ == "__main__":
     net = parsingNet(pretrained=True, backbone=cfg.NETWORK.BACKBONE, cls_dim=(
         cfg.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg.DATASET.NUM_LANES), 
         use_aux=cfg.NETWORK.USE_AUX, use_spp=cfg.NETWORK.USE_SPP, 
-        use_attn = cfg.NETWORK.USE_ATTN, use_resa = cfg.NETWORK.USE_RESA).cuda()
+        use_attn = cfg.NETWORK.USE_ATTN, use_resa = cfg.NETWORK.USE_RESA, 
+        use_sfl_attn = cfg.NETWORK.USE_SFL_ATTN).cuda()
 
     if distributed:
         net = torch.nn.parallel.DistributedDataParallel(

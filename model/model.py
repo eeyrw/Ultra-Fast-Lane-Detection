@@ -5,6 +5,7 @@ from model.fast_scnn import FastSCNN
 from model.efficientnetv2 import effnetv2_s
 from model.selfAttention import Self_Attn
 from model.resa import RESA
+from model.shuffle_attention import sa_layer
 import numpy as np
 
 validBackbones = ['effnetv2', 'fast_scnn', 'res18', 'res34', 'res50', 'res101',
@@ -27,8 +28,8 @@ class conv_bn_relu(torch.nn.Module):
 
 
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', cls_dim=(37, 10, 4), 
-    use_aux=False, use_spp=False, use_attn=False, use_resa=False, use_mid_aux=False):
+    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', cls_dim=(37, 10, 4),
+                 use_aux=False, use_spp=False, use_attn=False, use_resa=False, use_sfl_attn=False, use_mid_aux=False):
         super(parsingNet, self).__init__()
 
         self.size = size
@@ -41,6 +42,7 @@ class parsingNet(torch.nn.Module):
         self.use_spp = use_spp
         self.use_attn = use_attn
         self.use_resa = use_resa
+        self.use_sfl_attn = use_sfl_attn
         self.use_mid_aux = use_mid_aux
         self.total_dim = np.prod(cls_dim)
         self.backbone = backbone
@@ -124,7 +126,7 @@ class parsingNet(torch.nn.Module):
 
             self.interPoolChnNum = 1800
 
-            if self.use_attn:
+            if self.use_attn or self.use_sfl_attn:
                 self.cls = torch.nn.Sequential(
                     torch.nn.Linear(self.interPoolChnNum, 128),
                     torch.nn.ReLU(),
@@ -132,9 +134,9 @@ class parsingNet(torch.nn.Module):
                 )
             else:
                 self.cls = torch.nn.Sequential(
-                    torch.nn.Linear(self.interPoolChnNum, 2048),
+                    torch.nn.Linear(self.interPoolChnNum, 128),
                     torch.nn.ReLU(),
-                    torch.nn.Linear(2048, self.total_dim),
+                    torch.nn.Linear(128, self.total_dim),
                 )
 
             self.pool = torch.nn.Conv2d(512, 8, 1) if backbone in [
@@ -149,9 +151,13 @@ class parsingNet(torch.nn.Module):
                 self.selfAttn = Self_Attn(512)
                 initialize_weights(self.selfAttn)
 
+            if self.use_sfl_attn:
+                self.sfl_attn = sa_layer(512)
+                initialize_weights(self.sfl_attn)
+
             if self.use_resa:
-                self.resa = RESA(512,9,25)
-                initialize_weights(self.resa)
+                self.resa = RESA(512, 9, 25)
+                # initialize_weights(self.resa)
 
             self.avgPool = torch.nn.Sequential(torch.nn.Conv2d(512, self.total_dim, 1),
                                                torch.nn.ReLU(),
@@ -217,7 +223,10 @@ class parsingNet(torch.nn.Module):
                 fea = self.selfAttn(fea)[0]
 
             if self.use_resa:
-                fea = self.resa(fea)                
+                fea = self.resa(fea)
+
+            if self.use_sfl_attn:
+                fea = self.sfl_attn(fea)
 
             fea = self.pool(fea)
             mid_fea = fea.view(-1, self.interPoolChnNum)

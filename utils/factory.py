@@ -28,7 +28,9 @@ def get_scheduler(optimizer, cfg, iters_per_epoch, paramSet='TRAIN'):
                                       warmup=cfg[paramSet]['WARMUP_ITERS'], warmup_iters=cfg[paramSet]['WARMUP_ITERS'])
     elif cfg[paramSet]['SCHEDULER'] == 'cyclic':
         scheduler = torch.optim.lr_scheduler.CyclicLR(
-            optimizer, base_lr=0.001, max_lr=0.1)
+            optimizer, base_lr=0.00001, max_lr=0.1,
+            step_size_up=iters_per_epoch*1,
+            step_size_down=iters_per_epoch*3)
     else:
         raise NotImplementedError
     return scheduler
