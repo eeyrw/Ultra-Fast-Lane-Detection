@@ -2,8 +2,8 @@ PROJECT_NAME:= evaluate
 
 # config ----------------------------------
 
-INCLUDE_DIRS := include
-LIBRARY_DIRS := lib
+INCLUDE_DIRS := ../../../../opencv/include/opencv4/ ./include
+LIBRARY_DIRS := ../../../../opencv/lib64
 
 # You may switch different versions of opencv like this:
 # export PKG_CONFIG_PATH=/usr/local/opencv-4.1.1/lib/pkgconfig:$PKG_CONFIG_PATH 
