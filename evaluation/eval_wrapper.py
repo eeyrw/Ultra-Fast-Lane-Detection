@@ -235,7 +235,10 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
                 FP += val_fp
                 FN += val_fn
                 dist_print(k, val)
-                metricsDict[k] = val
+                if k == 'res_cross_fp':
+                    metricsDict[k] = val_fp
+                else:
+                    metricsDict[k] = val
             if (TP + FP) != 0:
                 P = TP * 1.0/(TP + FP)
             else:
@@ -372,5 +375,5 @@ def call_culane_eval(data_dir, exp_name, output_path):
     res_all['res_arrow'] = read_helper(out5)
     res_all['res_hlight'] = read_helper(out2)
     res_all['res_curve'] = read_helper(out6)
-    res_all['res_cross'] = read_helper(out7)
+    res_all['res_cross_fp'] = read_helper(out7)
     return res_all
