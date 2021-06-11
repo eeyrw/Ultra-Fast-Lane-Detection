@@ -10,6 +10,7 @@ import scipy
 import numpy as np
 import platform
 import cv2
+import shutil
 
 
 def generate_lines(out, shape, names, output_path, griding_num, localization_type='abs', flip_updown=False):
@@ -54,7 +55,10 @@ def generate_lines(out, shape, names, output_path, griding_num, localization_typ
 def run_test(net, data_root, exp_name, work_dir, griding_num, use_aux, distributed, batch_size=8, proportion=1):
     # torch.backends.cudnn.benchmark = True
     output_path = os.path.join(work_dir, exp_name)
-    if not os.path.exists(output_path) and is_main_process():
+
+    if is_main_process():
+        if os.path.exists(output_path):
+            shutil.rmtree(output_path)
         os.mkdir(output_path)
     synchronize()
     loader = get_test_loader(batch_size, data_root,
@@ -144,25 +148,28 @@ def combine_tusimple_test(work_dir, exp_name):
     with open(output_path, 'w') as fp:
         fp.writelines(all_res_no_dup)
 
-def createVisualTestImage(data_root,result):
+
+def createVisualTestImage(data_root, result):
     clipDir = os.path.dirname(result['raw_file'])
     raw_file_path = os.path.join(data_root, result['raw_file'])
-    testResultImagePath = os.path.join(data_root, os.path.join(clipDir,'test.webp'))   
+    testResultImagePath = os.path.join(
+        data_root, os.path.join(clipDir, 'test.webp'))
     img_bgr = cv2.imread(raw_file_path)
 
     for laneIndex, gtLaneXPoints in enumerate(result['gt_lanes'], 0):
         laneLabelColor = lane_index_colour[laneIndex+1]
         laneLabelColor = (int(
-                    laneLabelColor[2]), int(laneLabelColor[1]), int(laneLabelColor[0]))# rgb to bgr
+            laneLabelColor[2]), int(laneLabelColor[1]), int(laneLabelColor[0]))  # rgb to bgr
         curveVertices = list(filter(lambda xyPair: xyPair[0] > 0, zip(
             gtLaneXPoints, result['y_samples'])))
 
         for vertex1, vertex2 in zip(curveVertices[:-1], curveVertices[1:]):
             cv2.line(img_bgr, tuple(vertex1),
-                    tuple(vertex2), (int(255), int(92), int(178)), 1)
+                     tuple(vertex2), (int(255), int(92), int(178)), 1)
 
         for node in curveVertices:
-            cv2.circle(img_bgr, tuple(node), 6, (int(255),int(255),int(255)), -1)
+            cv2.circle(img_bgr, tuple(node), 6,
+                       (int(255), int(255), int(255)), -1)
             cv2.circle(img_bgr, tuple(node), 4, (int(laneLabelColor[0]), int(
                 laneLabelColor[1]), int(laneLabelColor[2])), -1)
 
@@ -170,19 +177,22 @@ def createVisualTestImage(data_root,result):
         laneLabelColor = lane_index_colour[laneIndex+1]
         laneLabelColor = (
             laneLabelColor[2], laneLabelColor[1], laneLabelColor[0])  # rgb to bgr
-        curveVertices = list(filter(lambda xyPair: xyPair[0] > 0, zip(predLaneXPoints, result['y_samples'])))
+        curveVertices = list(filter(lambda xyPair: xyPair[0] > 0, zip(
+            predLaneXPoints, result['y_samples'])))
 
         for vertex1, vertex2 in zip(curveVertices[:-1], curveVertices[1:]):
             cv2.line(img_bgr, tuple(vertex1),
-                    tuple(vertex2), (int(255), int(92), int(178)), 1)
+                     tuple(vertex2), (int(255), int(92), int(178)), 1)
 
         for node in curveVertices:
-            cv2.circle(img_bgr, tuple(node), 6, (int(0),int(0),int(0)), -1)
+            cv2.circle(img_bgr, tuple(node), 6, (int(0), int(0), int(0)), -1)
             cv2.circle(img_bgr, tuple(node), 4, (int(laneLabelColor[0]), int(
                 laneLabelColor[1]), int(laneLabelColor[2])), -1)
 
-    cv2.imwrite(testResultImagePath, img_bgr, [int(cv2.IMWRITE_WEBP_QUALITY), 95])
+    cv2.imwrite(testResultImagePath, img_bgr, [
+                int(cv2.IMWRITE_WEBP_QUALITY), 95])
     return testResultImagePath
+
 
 def visualTestResult(dataset, data_root, results):
     if dataset == 'Tusimple':
@@ -190,31 +200,29 @@ def visualTestResult(dataset, data_root, results):
         print('Worst 20:')
         for i in range(20):
             result = results[i]
-            visualTestResultImagePath = createVisualTestImage(data_root,result)
+            visualTestResultImagePath = createVisualTestImage(
+                data_root, result)
             print('%d. acc:%.5f,fp:%.5f,fn:%.5f file:%s' % (i, result['acc'], result['fp'],
                                                             result['fn'], visualTestResultImagePath))
 
         print('Best 20:')
         for i in range(20):
             result = results[-(i+1)]
-            visualTestResultImagePath = createVisualTestImage(data_root,result)
+            visualTestResultImagePath = createVisualTestImage(
+                data_root, result)
             raw_file_path = os.path.join(data_root, result['raw_file'])
             print('%d. acc:%.5f,fp:%.5f,fn:%.5f file:%s' % (i, result['acc'], result['fp'],
                                                             result['fn'], visualTestResultImagePath))
 
 
-def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distributed, lastMetrics=None, proportion=1):
+def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distributed, lastMetrics=None, batch_size=8, proportion=1):
     net.eval()
     metricsDict = {}
     isBetter = True
 
-    if proportion != 1:
-        raise NotImplementedError(
-            "Using partial test set is not supporting until now.")
-
     if dataset == 'CULane':
         run_test(net, data_root, 'culane_eval_tmp', work_dir,
-                 griding_num, use_aux, distributed, proportion=proportion)
+                 griding_num, use_aux, distributed, batch_size=batch_size, proportion=proportion)
         synchronize()   # wait for all results
         if is_main_process():
             res = call_culane_eval(data_root, 'culane_eval_tmp', work_dir)
@@ -253,6 +261,10 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
         synchronize()
 
     elif dataset == 'Tusimple':
+        if proportion != 1:
+            raise NotImplementedError(
+                "Using partial test set is not supporting until now.")
+
         exp_name = 'tusimple_eval_tmp'
         run_test_tusimple(net, data_root, work_dir, exp_name,
                           griding_num, use_aux, distributed, proportion=proportion)
@@ -322,7 +334,7 @@ def call_culane_eval(data_dir, exp_name, output_path):
 
     eval_cmd = './evaluation/culane/evaluate'
     if platform.system() == 'Windows':
-        eval_cmd = eval_cmd.replace('/', os.sep)
+        eval_cmd = eval_cmd.replace('/', os.sep)+'.exe'
 
     # print('./evaluate -a %s -d %s -i %s -l %s -w %s -t %s -c %s -r %s -f %s -o %s'%(data_dir,detect_dir,data_dir,list0,w_lane,iou,im_w,im_h,frame,out0))
     os.system('%s -a %s -d %s -i %s -l %s -w %s -t %s -c %s -r %s -f %s -o %s' %

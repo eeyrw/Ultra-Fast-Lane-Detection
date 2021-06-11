@@ -39,7 +39,7 @@ void help(void)
 }
 
 
-void read_lane_file(const string &file_name, vector<vector<Point2f> > &lanes);
+int read_lane_file(const string &file_name, vector<vector<Point2f> > &lanes);
 void visualize(string &full_im_name, vector<vector<Point2f> > &anno_lanes, vector<vector<Point2f> > &detect_lanes, vector<int> anno_match, int width_lane);
 
 int main(int argc, char **argv)
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 	int oc;
 	bool show = false;
 	int frame = 1;
-	while((oc = getopt(argc, argv, "ha:d:i:l:w:t:c:r:sf:o:")) != -1)
+	while((oc = getopt(argc, argv, "ha:d:i:l:w:t:c:r:f:o:s")) != -1)
 	{
 		switch(oc)
 		{
@@ -154,10 +154,19 @@ int main(int argc, char **argv)
 		string detect_file_name = detect_dir + sub_txt_name;
 		vector<vector<Point2f> > anno_lanes;
 		vector<vector<Point2f> > detect_lanes;
-		read_lane_file(anno_file_name, anno_lanes);
-		read_lane_file(detect_file_name, detect_lanes);
+
+		int ret1,ret2;
+		ret1 = read_lane_file(anno_file_name, anno_lanes);
+		ret2 = read_lane_file(detect_file_name, detect_lanes);
 		//cerr<<count<<": "<<full_im_name<<endl;
-		tuple_lists[i] = counter.count_im_pair(anno_lanes, detect_lanes);
+		if (ret1 < 0 || ret2 < 0)
+		{
+			vector<int> dummy = { -1,-1,-1 };
+			tuple_lists[i] = std::make_tuple(dummy, 0, 0, 0, 0);
+		}
+		else
+			tuple_lists[i] = counter.count_im_pair(anno_lanes, detect_lanes);
+		
 		if (show)
 		{
 			auto anno_match = get<0>(tuple_lists[i]);
@@ -197,13 +206,13 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-void read_lane_file(const string &file_name, vector<vector<Point2f> > &lanes)
+int read_lane_file(const string &file_name, vector<vector<Point2f> > &lanes)
 {
 	lanes.clear();
 	ifstream ifs_lane(file_name, ios::in);
 	if(ifs_lane.fail())
 	{
-		return;
+		return -1;
 	}
 
 	string str_line;
@@ -221,6 +230,7 @@ void read_lane_file(const string &file_name, vector<vector<Point2f> > &lanes)
 	}
 
 	ifs_lane.close();
+	return 0;
 }
 
 void visualize(string &full_im_name, vector<vector<Point2f> > &anno_lanes, vector<vector<Point2f> > &detect_lanes, vector<int> anno_match, int width_lane)

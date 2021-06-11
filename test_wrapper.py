@@ -29,4 +29,4 @@ def testNet(net, args, cfg, testWithAux, lastMetrics=None):
     if not os.path.exists(cfg.TEST.WORK_DIR):
         os.mkdir(cfg.TEST.WORK_DIR)
 
-    return eval_lane(net, cfg.DATASET.NAME, cfg.DATASET.ROOT, cfg.TEST.WORK_DIR, cfg.NETWORK.GRIDING_NUM, testWithAux, distributed, lastMetrics=lastMetrics, proportion=cfg.DATASET.TEST_PROPORTION)
+    return eval_lane(net, cfg.DATASET.NAME, cfg.DATASET.ROOT, cfg.TEST.WORK_DIR, cfg.NETWORK.GRIDING_NUM, testWithAux, distributed, lastMetrics=lastMetrics, batch_size=cfg.TEST.BATCH_SIZE, proportion=cfg.DATASET.TEST_PROPORTION)

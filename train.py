@@ -143,7 +143,9 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
 
 if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
-
+    torch.manual_seed(42)
+    np.random.seed(42)
+    
     args, cfg = merge_yacs_config()
 
     work_dir = get_work_dir(cfg)

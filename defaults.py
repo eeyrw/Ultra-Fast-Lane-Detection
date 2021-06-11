@@ -97,6 +97,7 @@ _C.TEST.MODEL = None
 _C.TEST.WORK_DIR = '../test_tmp'
 _C.TEST.INTERVAL = 3
 _C.TEST.DURING_TRAIN = True
+_C.TEST.BATCH_SIZE = 100
 
 
 def get_cfg_defaults():
