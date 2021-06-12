@@ -140,8 +140,9 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
                                          t_net_1 - t_net_0),
                                      **kwargs)
         if math.isnan(float(loss)):
+            print('The loss turns into NaN. Terminate training.')
             break
-        
+
         t_data_0 = time.time()
 
 
@@ -149,7 +150,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.benchmark = True
     torch.manual_seed(42)
     np.random.seed(42)
-    
+
     args, cfg = merge_yacs_config()
 
     work_dir = get_work_dir(cfg)
@@ -177,10 +178,10 @@ if __name__ == "__main__":
     )
 
     net = parsingNet(pretrained=True, backbone=cfg.NETWORK.BACKBONE, cls_dim=(
-        cfg.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg.DATASET.NUM_LANES), 
-        use_aux=cfg.NETWORK.USE_AUX, use_spp=cfg.NETWORK.USE_SPP, 
-        use_attn = cfg.NETWORK.USE_ATTN, use_resa = cfg.NETWORK.USE_RESA, 
-        use_sfl_attn = cfg.NETWORK.USE_SFL_ATTN).cuda()
+        cfg.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg.DATASET.NUM_LANES),
+        use_aux=cfg.NETWORK.USE_AUX, use_spp=cfg.NETWORK.USE_SPP,
+        use_attn=cfg.NETWORK.USE_ATTN, use_resa=cfg.NETWORK.USE_RESA,
+        use_sfl_attn=cfg.NETWORK.USE_SFL_ATTN).cuda()
 
     if distributed:
         net = torch.nn.parallel.DistributedDataParallel(
