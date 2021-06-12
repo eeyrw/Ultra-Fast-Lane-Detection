@@ -2,6 +2,7 @@ import torch
 import os
 import datetime
 import numpy as np
+import math
 
 from model.model import parsingNet
 from model.model import validBackbones
@@ -138,6 +139,9 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
                                      net_time='%.3f' % float(
                                          t_net_1 - t_net_0),
                                      **kwargs)
+        if math.isnan(float(loss)):
+            break
+        
         t_data_0 = time.time()
 
 
