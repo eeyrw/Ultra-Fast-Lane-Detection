@@ -10,10 +10,10 @@ import torchvision.models as models
 
 
 if __name__ == "__main__":
-    input = torch.randn(28,3,800,288)
+    input = torch.randn(7,3,800,288)
     # net = SPPLayer(2)
     # out = net(input)
-    net = parsingNet(size=(288, 800), pretrained=True, backbone='res18', cls_dim=(50+1, 56, 4), use_attn = True, use_aux=False, use_spp=False)
+    net = parsingNet(size=(288, 800), pretrained=True, backbone='attanet', cls_dim=(50+1, 56, 4), use_attn = False, use_aux=False, use_spp=False)
     stat(net, (3, 800, 288))
-    # out = net(input)
+    out = net(input)
     #print(out)

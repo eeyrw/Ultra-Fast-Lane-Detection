@@ -23,14 +23,14 @@ def get_train_loader(batch_size, data_root, griding_num, dataset, use_aux,
     ])
     img_transform = transforms.Compose([
         transforms.Resize((288, 800)),
-        transforms.ColorJitter(brightness=0.6, contrast=0.6, saturation=0.3, hue=0),
+        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.1, hue=0),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
     simu_transform = mytransforms.Compose2([
-        mytransforms.RandomRotate(10),
-        mytransforms.RandomUDoffsetLABEL(100),
-        mytransforms.RandomLROffsetLABEL(200)
+        mytransforms.RandomRotate(5),
+        mytransforms.RandomUDoffsetLABEL(50),
+        mytransforms.RandomLROffsetLABEL(100)
     ])
     if dataset == 'CULane':
         train_dataset = LaneClsDataset(data_root,

@@ -6,9 +6,11 @@ from model.efficientnetv2 import effnetv2_s
 from model.selfAttention import Self_Attn
 from model.resa import RESA
 from model.shuffle_attention import sa_layer
+from model.erfnet import ERFNetEncoder,ERFNetDecoder
+from model.AttaNet import AttaNetHead,AttaNetOutput,AttaNetHeadMod
 import numpy as np
 
-validBackbones = ['effnetv2', 'fast_scnn', 'res18', 'res34', 'res50', 'res101',
+validBackbones = ['attanet', 'erfnet', 'effnetv2', 'fast_scnn', 'res18', 'res34', 'res50', 'res101',
                   'res152', '50next', '101next', '50wide', '101wide']
 
 
@@ -69,6 +71,91 @@ class parsingNet(torch.nn.Module):
             initialize_weights(self.model)
             initialize_weights(self.cls)
 
+        elif self.backbone == 'erfnet':
+            # input : nchw,
+            # output: (w+1) * sample_rows * 4
+            self.model = ERFNetEncoder()
+
+            if self.use_aux:
+                self.aux_combine = torch.nn.Sequential(
+                    conv_bn_relu(128, 64, 3, padding=1),
+                    conv_bn_relu(64, self.cls_dim[-1] + 1, 3, padding=1),
+                )
+                initialize_weights(self.aux_combine)
+
+            self.interPoolChnNum = 1800*2
+
+            self.cls = torch.nn.Sequential(
+                torch.nn.Linear(self.interPoolChnNum, 128),
+                torch.nn.ReLU(),
+                torch.nn.Linear(128, self.total_dim),
+            )
+
+            self.pool = torch.nn.Conv2d(128, 1, 1)
+            # 1/32,2048 channel
+            # 288,800 -> 9,40,2048
+            # (w+1) * sample_rows * 4
+            # 37 * 10 * 4
+            initialize_weights(self.cls)
+
+            if self.use_attn:
+                self.selfAttn = Self_Attn(128)
+                initialize_weights(self.selfAttn)
+
+            if self.use_sfl_attn:
+                self.sfl_attn = sa_layer(128)
+                initialize_weights(self.sfl_attn)
+        elif self.backbone == 'attanet':
+            # input : nchw,
+            # output: (w+1) * sample_rows * 4
+            self.model = AttaNetHeadMod()
+
+            if self.use_aux:
+                self.aux_header2 = torch.nn.Sequential(
+                    conv_bn_relu(128, 128, 3, padding=1),
+                    conv_bn_relu(128, 128, 3, padding=1),
+                    conv_bn_relu(128, 128, 3, padding=1),
+                )
+                self.aux_header3 = torch.nn.Sequential(
+                    conv_bn_relu(128, 128, 3, padding=1),
+                    conv_bn_relu(128, 128, 3, padding=1),
+                )
+                self.aux_header4 = torch.nn.Sequential(
+                    conv_bn_relu(128, 128, 3, padding=1),
+                )
+                self.aux_combine = torch.nn.Sequential(
+                    conv_bn_relu(384, 256, 3, padding=2, dilation=2),
+                    conv_bn_relu(256, 128, 3, padding=2, dilation=2),
+                    conv_bn_relu(128, 128, 3, padding=2, dilation=2),
+                    conv_bn_relu(128, 128, 3, padding=4, dilation=4),
+                    torch.nn.Conv2d(128, cls_dim[-1] + 1, 1)
+                    # output : n, num_of_lanes+1, h, w
+                )
+                initialize_weights(
+                    self.aux_header2, self.aux_header3, self.aux_header4, self.aux_combine)
+
+            self.interPoolChnNum = 1800*2
+
+            self.cls = torch.nn.Sequential(
+                torch.nn.Linear(self.interPoolChnNum, 128),
+                torch.nn.ReLU(),
+                torch.nn.Linear(128, self.total_dim),
+            )
+
+            self.pool = torch.nn.Conv2d(128, 4, 1)
+            # 1/32,2048 channel
+            # 288,800 -> 9,40,2048
+            # (w+1) * sample_rows * 4
+            # 37 * 10 * 4
+            initialize_weights(self.cls)
+
+            if self.use_attn:
+                self.selfAttn = Self_Attn(128)
+                initialize_weights(self.selfAttn)
+
+            if self.use_sfl_attn:
+                self.sfl_attn = sa_layer(128)
+                initialize_weights(self.sfl_attn)
         elif self.backbone == 'effnetv2':
             self.model = effnetv2_s(
                 segOutChanNum=5, segOut=use_aux, segOutSize=(36, 100), midFeature=True)
@@ -195,6 +282,76 @@ class parsingNet(torch.nn.Module):
             mid_fea = fea.view(-1, self.interPoolChnNum)
 
             group_cls = self.cls(mid_fea)
+            group_cls = group_cls.view(-1, *self.cls_dim)
+
+            if self.use_aux:
+                return group_cls, aux_seg
+            if self.use_mid_aux:
+                return group_cls, mid_fea
+
+            return group_cls
+        elif self.backbone == 'erfnet':
+            fea = self.model(x)
+
+            if self.use_aux:
+                aux_seg = self.aux_combine(fea)
+            else:
+                aux_seg = None
+
+            if self.use_attn:
+                fea = self.selfAttn(fea)[0]
+
+            if self.use_resa:
+                fea = self.resa(fea)
+
+            if self.use_sfl_attn:
+                fea = self.sfl_attn(fea)
+
+            fea = self.pool(fea)
+            mid_fea = fea.view(-1, self.interPoolChnNum)
+
+            group_cls = self.cls(mid_fea)
+
+            # group_cls = self.avgPool(fea)
+            group_cls = group_cls.view(-1, *self.cls_dim)
+
+            if self.use_aux:
+                return group_cls, aux_seg
+            if self.use_mid_aux:
+                return group_cls, mid_fea
+
+            return group_cls
+        elif self.backbone == 'attanet':
+            x2,fea,x4 = self.model(x)
+
+            if self.use_aux:
+                x2 = self.aux_header2(x2)
+                x3 = self.aux_header3(fea)
+                x3 = torch.nn.functional.interpolate(
+                    x3, scale_factor=2, mode='bilinear', align_corners=True)
+                x4 = self.aux_header4(x4)
+                x4 = torch.nn.functional.interpolate(
+                    x4, scale_factor=4, mode='bilinear', align_corners=True)
+                aux_seg = torch.cat([x2, x3, x4], dim=1)
+                aux_seg = self.aux_combine(aux_seg)
+            else:
+                aux_seg = None
+
+            if self.use_attn:
+                fea = self.selfAttn(fea)[0]
+
+            if self.use_resa:
+                fea = self.resa(fea)
+
+            if self.use_sfl_attn:
+                fea = self.sfl_attn(fea)
+
+            fea = self.pool(fea)
+            mid_fea = fea.view(-1, self.interPoolChnNum)
+
+            group_cls = self.cls(mid_fea)
+
+            # group_cls = self.avgPool(fea)
             group_cls = group_cls.view(-1, *self.cls_dim)
 
             if self.use_aux:
