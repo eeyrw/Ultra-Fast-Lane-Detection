@@ -23,7 +23,7 @@ from generate_pseudo_gt import genPseudoGt
 import time
 
 
-def inference(net, data_label, use_aux, load_name):
+def inference(net, data_label, use_aux, use_mid_aux, load_name):
     if use_aux and not load_name:
         img, cls_label, seg_label = data_label
         img, cls_label, seg_label = img.cuda(), cls_label.cuda(), seg_label.cuda()
@@ -39,6 +39,12 @@ def inference(net, data_label, use_aux, load_name):
         img, cls_label, seg_label = img.cuda(), cls_label.cuda(), seg_label.cuda()
         cls_out, seg_out = net(img)
         return {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out': seg_out, 'seg_label': seg_label, 'img_name': img_name}
+    elif use_mid_aux and load_name:
+        img, cls_label, img_name = data_label
+        img, cls_label = img.cuda(), cls_label.cuda()
+        cls_out, x2_out, x3_out, x4_out, fea_out = net(img)
+        return {'cls_out': cls_out, 'cls_label': cls_label, 'x2_out': x2_out,
+                'x3_out': x3_out, 'x4_out': x4_out, 'fea_out': fea_out, 'img_name': img_name}
     else:
         img, cls_label = data_label
         img, cls_label = img.cuda(), cls_label.cuda()
@@ -57,11 +63,8 @@ def calc_loss(loss_dict, results, logger, global_step):
     loss = 0
 
     for i in range(len(loss_dict['name'])):
-
         data_src = loss_dict['data_src'][i]
-
         datas = [results[src] for src in data_src]
-
         loss_cur = loss_dict['op'][i](*datas)
 
         if global_step % 20 == 0:
@@ -73,7 +76,7 @@ def calc_loss(loss_dict, results, logger, global_step):
 
 
 def train(net, net_teacher, data_loader, loss_dict, optimizer, scheduler, logger,
-          epoch, metric_dict, use_aux, cfg, cls_num_per_lane):
+          epoch, metric_dict, cfg):
     net.train()
     net_teacher.eval()
     progress_bar = dist_tqdm(data_loader)
@@ -86,8 +89,9 @@ def train(net, net_teacher, data_loader, loss_dict, optimizer, scheduler, logger
         global_sample_iter = global_batch_step * cfg.TRAIN.BATCH_SIZE
 
         t_net_0 = time.time()
-        results = inference(net, data_label, use_aux, load_name=True)
-        results_teacher = inference(net_teacher, data_label, use_aux, load_name=True)
+        results = inference(net, data_label, cfg.NETWORK.USE_AUX,
+                            cfg.NETWORK.USE_MID_AUX, load_name=True)
+
         if global_batch_step % 200 == 0:
             if cfg.DATASET.NAME == 'CULane':
                 cls_num_per_lane = 18
@@ -223,13 +227,13 @@ if __name__ == "__main__":
 
     net_teacher = parsingNet(pretrained=False, backbone=cfg_teacher.NETWORK.BACKBONE, cls_dim=(
         cfg_teacher.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg_teacher.DATASET.NUM_LANES),
-        use_aux=False, use_spp=cfg_teacher.NETWORK.USE_SPP,use_mid_aux = True,
+        use_aux=False, use_spp=cfg_teacher.NETWORK.USE_SPP, use_mid_aux=cfg_teacher.NETWORK.USE_MID_AUX,
         use_attn=cfg_teacher.NETWORK.USE_ATTN, use_resa=cfg_teacher.NETWORK.USE_RESA,
         use_sfl_attn=cfg_teacher.NETWORK.USE_SFL_ATTN).cuda()
 
     net_student = parsingNet(pretrained=True, backbone=cfg_student.NETWORK.BACKBONE, cls_dim=(
         cfg_student.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg_student.DATASET.NUM_LANES),
-        use_aux=False, use_spp=cfg_student.NETWORK.USE_SPP,use_mid_aux = True,
+        use_aux=False, use_spp=cfg_student.NETWORK.USE_SPP, use_mid_aux=cfg_teacher.NETWORK.USE_MID_AUX,
         use_attn=cfg_student.NETWORK.USE_ATTN, use_resa=cfg_student.NETWORK.USE_RESA,
         use_sfl_attn=cfg_student.NETWORK.USE_SFL_ATTN).cuda()
 
@@ -258,7 +262,7 @@ if __name__ == "__main__":
     for epoch in range(resume_epoch, cfg_student.TRAIN.EPOCH):
 
         train(net_student, net_teacher, train_loader, loss_dict, optmzr, scdulr,
-              logger, epoch, metric_dict, cfg_student.NETWORK.USE_AUX, cfg_student, cls_num_per_lane)
+              logger, epoch, metric_dict, cfg_student)
         if cfg_student.TEST.DURING_TRAIN and (epoch % cfg_student.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
                 net_student, args_student, cfg_student, True, lastMetrics=bestMetrics)
