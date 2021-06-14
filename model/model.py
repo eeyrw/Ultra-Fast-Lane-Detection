@@ -30,8 +30,10 @@ class conv_bn_relu(torch.nn.Module):
 
 
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', cls_dim=(37, 10, 4),
-                 use_aux=False, use_spp=False, use_attn=False, use_resa=False, use_sfl_attn=False, use_mid_aux=False):
+    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', 
+                cls_dim=(37, 10, 4),fc_mid_chan_num = 128,
+                 use_aux=False, use_spp=False, use_attn=False, 
+                 use_resa=False, use_sfl_attn=False, use_mid_aux=False):
         super(parsingNet, self).__init__()
 
         self.size = size
@@ -48,6 +50,7 @@ class parsingNet(torch.nn.Module):
         self.use_mid_aux = use_mid_aux
         self.total_dim = np.prod(cls_dim)
         self.backbone = backbone
+        self.fc_mid_chan_num = fc_mid_chan_num
 
         if self.backbone == 'fast_scnn':
             self.model = FastSCNN(
@@ -213,18 +216,11 @@ class parsingNet(torch.nn.Module):
 
             self.interPoolChnNum = 1800
 
-            if self.use_attn or self.use_sfl_attn:
-                self.cls = torch.nn.Sequential(
-                    torch.nn.Linear(self.interPoolChnNum, 128),
-                    torch.nn.ReLU(),
-                    torch.nn.Linear(128, self.total_dim),
-                )
-            else:
-                self.cls = torch.nn.Sequential(
-                    torch.nn.Linear(self.interPoolChnNum, 128),
-                    torch.nn.ReLU(),
-                    torch.nn.Linear(128, self.total_dim),
-                )
+            self.cls = torch.nn.Sequential(
+                torch.nn.Linear(self.interPoolChnNum, self.fc_mid_chan_num),
+                torch.nn.ReLU(),
+                torch.nn.Linear(self.fc_mid_chan_num, self.total_dim),
+            )
 
             self.pool = torch.nn.Conv2d(512, 8, 1) if backbone in [
                 'res34', 'res18'] else torch.nn.Conv2d(2048, 8, 1)
@@ -361,14 +357,14 @@ class parsingNet(torch.nn.Module):
 
             return group_cls
         else:
-            x2, x3, fea = self.model(x)
+            x2, x3, x4 = self.model(x)
 
             if self.use_aux:
                 x2 = self.aux_header2(x2)
                 x3 = self.aux_header3(x3)
                 x3 = torch.nn.functional.interpolate(
                     x3, scale_factor=2, mode='bilinear', align_corners=True)
-                x4 = self.aux_header4(fea)
+                x4 = self.aux_header4(x4)
                 x4 = torch.nn.functional.interpolate(
                     x4, scale_factor=4, mode='bilinear', align_corners=True)
                 aux_seg = torch.cat([x2, x3, x4], dim=1)
@@ -377,15 +373,15 @@ class parsingNet(torch.nn.Module):
                 aux_seg = None
 
             if self.use_attn:
-                fea = self.selfAttn(fea)[0]
+                fea = self.selfAttn(x4)[0]
 
             if self.use_resa:
-                fea = self.resa(fea)
+                fea = self.resa(x4)
 
             if self.use_sfl_attn:
-                fea = self.sfl_attn(fea)
+                fea = self.sfl_attn(x4)
 
-            fea = self.pool(fea)
+            fea = self.pool(x4)
             mid_fea = fea.view(-1, self.interPoolChnNum)
 
             group_cls = self.cls(mid_fea)
@@ -396,7 +392,7 @@ class parsingNet(torch.nn.Module):
             if self.use_aux:
                 return group_cls, aux_seg
             if self.use_mid_aux:
-                return group_cls, mid_fea
+                return group_cls, x2, x3, x4, fea
 
             return group_cls
 
