@@ -29,7 +29,7 @@ def inference(net1, net2, data_label, use_aux, use_mid_aux, load_name):
         img, cls_label, seg_label = img.cuda(), cls_label.cuda(), seg_label.cuda()
         cls_out, seg_out = net1(img)
         return {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out': seg_out, 'seg_label': seg_label}
-    elif load_name and not use_aux:
+    elif load_name and not use_aux and not use_mid_aux:
         img, cls_label, img_name = data_label
         img, cls_label = img.cuda(), cls_label.cuda()
         cls_out = net1(img)
@@ -158,6 +158,13 @@ def train(net, net_teacher, data_loader, loss_dict, optimizer, scheduler, logger
         t_data_0 = time.time()
 
 
+def loadTeacherNetState(net, cfg):
+    if cfg.EXP.RESUME is not None:
+        dist_print('==> Resume model from ' + cfg.EXP.RESUME)
+        resume_dict = torch.load(cfg.EXP.RESUME, map_location='cpu')
+        net.load_state_dict(resume_dict['model'], strict=False)
+
+
 def recoveryState(net, optimizer, cfg):
     if cfg.EXP.FINETUNE is not None:
         dist_print('finetune from ', cfg.EXP.FINETUNE)
@@ -232,13 +239,13 @@ if __name__ == "__main__":
 
     net_teacher = parsingNet(pretrained=False, backbone=cfg_teacher.NETWORK.BACKBONE, cls_dim=(
         cfg_teacher.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg_teacher.DATASET.NUM_LANES),
-        use_aux=False, use_spp=cfg_teacher.NETWORK.USE_SPP, use_mid_aux=cfg_teacher.NETWORK.USE_MID_AUX,
+        use_aux=False, use_spp=cfg_teacher.NETWORK.USE_SPP, use_mid_aux=cfg_student.NETWORK.USE_MID_AUX,
         use_attn=cfg_teacher.NETWORK.USE_ATTN, use_resa=cfg_teacher.NETWORK.USE_RESA,
         use_sfl_attn=cfg_teacher.NETWORK.USE_SFL_ATTN).cuda()
 
     net_student = parsingNet(pretrained=True, backbone=cfg_student.NETWORK.BACKBONE, cls_dim=(
         cfg_student.NETWORK.GRIDING_NUM+1, cls_num_per_lane, cfg_student.DATASET.NUM_LANES),
-        use_aux=False, use_spp=cfg_student.NETWORK.USE_SPP, use_mid_aux=cfg_teacher.NETWORK.USE_MID_AUX,
+        use_aux=False, use_spp=cfg_student.NETWORK.USE_SPP, use_mid_aux=cfg_student.NETWORK.USE_MID_AUX,
         use_attn=cfg_student.NETWORK.USE_ATTN, use_resa=cfg_student.NETWORK.USE_RESA,
         use_sfl_attn=cfg_student.NETWORK.USE_SFL_ATTN).cuda()
 
@@ -261,8 +268,7 @@ if __name__ == "__main__":
     optmzr, scdulr, resume_epoch = getOptimizerAndSchedulerAndResumeEpoch(
         'TRAIN', net_student, train_loader, cfg_student)
 
-    getOptimizerAndSchedulerAndResumeEpoch(
-        'TRAIN', net_teacher, train_loader, cfg_teacher)
+    loadTeacherNetState(net_teacher, cfg_teacher)
 
     for epoch in range(resume_epoch, cfg_student.TRAIN.EPOCH):
 
@@ -270,7 +276,7 @@ if __name__ == "__main__":
               logger, epoch, metric_dict, cfg_student)
         if cfg_student.TEST.DURING_TRAIN and (epoch % cfg_student.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
-                net_student, args_student, cfg_student, True, lastMetrics=bestMetrics)
+                net_student, args_student, cfg_student, False, lastMetrics=bestMetrics)
             sampleIterAfterEpoch = (epoch+1) * \
                 len(train_loader) * cfg_student.TRAIN.BATCH_SIZE
             for metricName, metricValue in metricsDict.items():

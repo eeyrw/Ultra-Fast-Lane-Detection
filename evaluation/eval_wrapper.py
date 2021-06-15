@@ -52,7 +52,8 @@ def generate_lines(out, shape, names, output_path, griding_num, localization_typ
                     fp.write('\n')
 
 
-def run_test(net, data_root, exp_name, work_dir, griding_num, use_aux, distributed, batch_size=8, proportion=1):
+def run_test(net, data_root, exp_name, work_dir, griding_num,
+             use_aux, use_mid_aux, distributed, batch_size=8, proportion=1):
     # torch.backends.cudnn.benchmark = True
     output_path = os.path.join(work_dir, exp_name)
 
@@ -71,7 +72,8 @@ def run_test(net, data_root, exp_name, work_dir, griding_num, use_aux, distribut
             out = net(imgs)
         if len(out) == 2 and use_aux:
             out, seg_out = out
-
+        if use_mid_aux:
+            out, _, _, _, _ = out
         generate_lines(out, imgs[0, 0].shape, names, output_path,
                        griding_num, localization_type='rel', flip_updown=True)
 
@@ -99,7 +101,8 @@ def generate_tusimple_lines(out, shape, griding_num, localization_type='rel'):
     return lanes
 
 
-def run_test_tusimple(net, data_root, work_dir, exp_name, griding_num, use_aux, distributed, batch_size=8, proportion=1):
+def run_test_tusimple(net, data_root, work_dir, exp_name, griding_num, use_aux, use_mid_aux,
+                      distributed, batch_size=8, proportion=1):
     output_path = os.path.join(work_dir, exp_name+'.%d.txt' % get_rank())
     fp = open(output_path, 'w')
     loader = get_test_loader(batch_size, data_root,
@@ -109,8 +112,12 @@ def run_test_tusimple(net, data_root, work_dir, exp_name, griding_num, use_aux, 
         imgs = imgs.cuda()
         with torch.no_grad():
             out = net(imgs)
+
         if len(out) == 2 and use_aux:
             out = out[0]
+        if use_mid_aux:
+            out, _, _, _, _ = out
+
         for i, name in enumerate(names):
             tmp_dict = {}
             tmp_dict['lanes'] = generate_tusimple_lines(
@@ -215,14 +222,15 @@ def visualTestResult(dataset, data_root, results):
                                                             result['fn'], visualTestResultImagePath))
 
 
-def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distributed, lastMetrics=None, batch_size=8, proportion=1):
+def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, use_mid_aux,
+              distributed, lastMetrics=None, batch_size=8, proportion=1):
     net.eval()
     metricsDict = {}
     isBetter = True
 
     if dataset == 'CULane':
         run_test(net, data_root, 'culane_eval_tmp', work_dir,
-                 griding_num, use_aux, distributed, batch_size=batch_size, proportion=proportion)
+                 griding_num, use_aux, use_mid_aux, distributed, batch_size=batch_size, proportion=proportion)
         synchronize()   # wait for all results
         if is_main_process():
             res = call_culane_eval(data_root, 'culane_eval_tmp', work_dir)
@@ -270,7 +278,7 @@ def eval_lane(net, dataset, data_root, work_dir, griding_num, use_aux, distribut
 
         exp_name = 'tusimple_eval_tmp'
         run_test_tusimple(net, data_root, work_dir, exp_name,
-                          griding_num, use_aux, distributed, proportion=proportion)
+                          griding_num, use_aux, use_mid_aux, distributed, proportion=proportion)
         synchronize()  # wait for all results
         if is_main_process():
             combine_tusimple_test(work_dir, exp_name)

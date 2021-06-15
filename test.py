@@ -13,13 +13,13 @@ if __name__ == "__main__":
     'TEST.MODEL', r'..\log\20210610_211907_lr_1e-01_b_32_attn\best.pth',
     "NETWORK.BACKBONE", "res18",
     "NETWORK.GRIDING_NUM", "50", "NETWORK.USE_ATTN", "True",
-    "NETWORK.USE_AUX", "True", "NETWORK.USE_RESA", "False",
+    "NETWORK.USE_AUX", "False", "NETWORK.USE_MID_AUX", "True","NETWORK.USE_RESA", "False",
     "NETWORK.USE_SFL_ATTN", "True", "DATASET.TRAIN_PROPORTION", "0.04",
     "DATASET.TEST_PROPORTION", "0.05"]
     )
 
     net= parsingNet(pretrained = False, backbone=cfg.NETWORK.BACKBONE, cls_dim = (cfg.NETWORK.GRIDING_NUM+1, cfg.NETWORK.CLS_NUM_PER_LANE, cfg.DATASET.NUM_LANES),
-                    use_aux = False).cuda()  # we dont need auxiliary segmentation in testing
+                    use_aux = False,use_mid_aux= cfg.NETWORK.USE_MID_AUX).cuda()  # we dont need auxiliary segmentation in testing
 
     state_dict=torch.load(cfg.TEST.MODEL, map_location = 'cpu')['model']
     compatible_state_dict={}
