@@ -1,5 +1,5 @@
 import math
-from utils.loss import SoftmaxFocalLoss, ParsingRelationLoss, ParsingRelationDis
+from utils.loss import SoftmaxFocalLoss, ParsingRelationLoss, ParsingRelationDis, AttentionMapLoss
 from utils.metrics import MultiLabelAcc, AccTopk, Metric_mIoU
 from utils.dist_utils import DistSummaryWriter
 
@@ -44,6 +44,17 @@ def get_loss_dict(cfg):
             'op': [SoftmaxFocalLoss(2), ParsingRelationLoss(), torch.nn.CrossEntropyLoss(), ParsingRelationDis()],
             'weight': [1.0, cfg.LOSS.SIM_LOSS_W, 1.0, cfg.LOSS.SHP_LOSS_W],
             'data_src': [('cls_out', 'cls_label'), ('cls_out',), ('seg_out', 'seg_label'), ('cls_out',)]
+        }
+    elif cfg.NETWORK.USE_MID_AUX:
+        loss_dict = {
+            'name': ['cls_loss', 'relation_loss', 'relation_dis',
+                     'x2_attn_loss', 'x3_attn_loss', 'x4_attn_loss'],
+            'op': [SoftmaxFocalLoss(2), ParsingRelationLoss(), ParsingRelationDis(),
+                   AttentionMapLoss(), AttentionMapLoss(), AttentionMapLoss()],
+            'weight': [1.0, cfg.LOSS.SIM_LOSS_W, cfg.LOSS.SHP_LOSS_W,
+                       1.0, 1.0, 1.0],
+            'data_src': [('cls_out', 'cls_label'), ('cls_out',), ('cls_out',),
+                         ('x2_out_net1', 'x2_out_net2'), ('x3_out_net1', 'x3_out_net2'), ('x4_out_net1', 'x4_out_net2')]
         }
     else:
         loss_dict = {

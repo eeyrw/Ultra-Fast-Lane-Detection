@@ -23,32 +23,37 @@ from generate_pseudo_gt import genPseudoGt
 import time
 
 
-def inference(net, data_label, use_aux, use_mid_aux, load_name):
+def inference(net1, net2, data_label, use_aux, use_mid_aux, load_name):
     if use_aux and not load_name:
         img, cls_label, seg_label = data_label
         img, cls_label, seg_label = img.cuda(), cls_label.cuda(), seg_label.cuda()
-        cls_out, seg_out = net(img)
+        cls_out, seg_out = net1(img)
         return {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out': seg_out, 'seg_label': seg_label}
     elif load_name and not use_aux:
         img, cls_label, img_name = data_label
         img, cls_label = img.cuda(), cls_label.cuda()
-        cls_out = net(img)
+        cls_out = net1(img)
         return {'cls_out': cls_out, 'cls_label': cls_label, 'img_name': img_name}
     elif use_aux and load_name:
         img, cls_label, seg_label, img_name = data_label
         img, cls_label, seg_label = img.cuda(), cls_label.cuda(), seg_label.cuda()
-        cls_out, seg_out = net(img)
+        cls_out, seg_out = net1(img)
         return {'cls_out': cls_out, 'cls_label': cls_label, 'seg_out': seg_out, 'seg_label': seg_label, 'img_name': img_name}
     elif use_mid_aux and load_name:
         img, cls_label, img_name = data_label
         img, cls_label = img.cuda(), cls_label.cuda()
-        cls_out, x2_out, x3_out, x4_out, fea_out = net(img)
-        return {'cls_out': cls_out, 'cls_label': cls_label, 'x2_out': x2_out,
-                'x3_out': x3_out, 'x4_out': x4_out, 'fea_out': fea_out, 'img_name': img_name}
+        cls_out, x2_out_net1, x3_out_net1, x4_out_net1, _ = net1(img)
+        with torch.no_grad():
+            net2.eval()
+            _, x2_out_net2, x3_out_net2, x4_out_net2, _ = net2(img)
+
+        return {'cls_out': cls_out, 'cls_label': cls_label,
+                'x2_out_net1': x2_out_net1, 'x3_out_net1': x3_out_net1, 'x4_out_net1': x4_out_net1,
+                'x2_out_net2': x2_out_net2, 'x3_out_net2': x3_out_net2, 'x4_out_net2': x4_out_net2, 'img_name': img_name}
     else:
         img, cls_label = data_label
         img, cls_label = img.cuda(), cls_label.cuda()
-        cls_out = net(img)
+        cls_out = net1(img)
         return {'cls_out': cls_out, 'cls_label': cls_label}
 
 
@@ -89,7 +94,7 @@ def train(net, net_teacher, data_loader, loss_dict, optimizer, scheduler, logger
         global_sample_iter = global_batch_step * cfg.TRAIN.BATCH_SIZE
 
         t_net_0 = time.time()
-        results = inference(net, data_label, cfg.NETWORK.USE_AUX,
+        results = inference(net, net_teacher, data_label, cfg.NETWORK.USE_AUX,
                             cfg.NETWORK.USE_MID_AUX, load_name=True)
 
         if global_batch_step % 200 == 0:
@@ -123,7 +128,7 @@ def train(net, net_teacher, data_loader, loss_dict, optimizer, scheduler, logger
         scheduler.step(global_sample_iter)
         t_net_1 = time.time()
 
-        results = resolve_val_data(results, use_aux)
+        results = resolve_val_data(results, False)
 
         update_metrics(metric_dict, results)
 
