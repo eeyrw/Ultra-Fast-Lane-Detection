@@ -53,14 +53,15 @@ class AttentionMapLoss(nn.Module):
         _, _, net1_h, net1_w = net1_out.size()
         _, _, net2_h, net2_w = net2_out.size()
 
-        if net1_h != net2_h or net1_w != net2_w:
-            net2_out = torch.nn.functional.interpolate(
-                net2_out, (net1_h, net1_w))
-
         net1_attn = torch.softmax(
             torch.sum(torch.pow(torch.abs(net1_out), 2), dim=1), dim=1)
         net2_attn = torch.softmax(
             torch.sum(torch.pow(torch.abs(net2_out), 2), dim=1), dim=1)
+
+        if net1_h != net2_h or net1_w != net2_w:
+            net2_attn = torch.nn.functional.interpolate(
+                net2_attn.unsqueeze(dim=1), (net1_h, net1_w)).squeeze(dim=1)
+
         loss = self.mse(net1_attn, net2_attn)
         return loss
 

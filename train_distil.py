@@ -215,8 +215,8 @@ if __name__ == "__main__":
 
     args_student, cfg_student = merge_yacs_config()
     args_teacher, cfg_teacher = merge_yacs_config(
-        overrideOpts=[r'..\log\20210613_210527_lr_1e-01_b_60cl_use_res50\cfg.yaml',
-                      'EXP.RESUME', r'..\log\20210613_210527_lr_1e-01_b_60cl_use_res50\best.pth']
+        overrideOpts=[r'../log/20210613_210527_lr_1e-01_b_60cl_use_res50/cfg.yaml',
+                      'EXP.RESUME', r'../log/20210613_210527_lr_1e-01_b_60cl_use_res50/best.pth']
     )
 
     work_dir = get_work_dir(cfg_student)
