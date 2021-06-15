@@ -13,7 +13,8 @@ if __name__ == "__main__":
     input = torch.randn(7,3,800,288)
     # net = SPPLayer(2)
     # out = net(input)
-    net = parsingNet(size=(288, 800), pretrained=True, backbone='attanet', cls_dim=(50+1, 56, 4), use_attn = False, use_aux=False, use_spp=False)
-    stat(net, (3, 800, 288))
+    net = parsingNet(size=(288, 800), pretrained=False, backbone='erfnet', cls_dim=(50+1, 56, 4), use_attn = False, use_aux=False, use_mid_aux = True,use_spp=False)
+    # stat(net, (3, 800, 288))
     out = net(input)
-    #print(out)
+    for o in out:
+        print(o.size())

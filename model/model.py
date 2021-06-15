@@ -6,8 +6,8 @@ from model.efficientnetv2 import effnetv2_s
 from model.selfAttention import Self_Attn
 from model.resa import RESA
 from model.shuffle_attention import sa_layer
-from model.erfnet import ERFNetEncoder,ERFNetDecoder
-from model.AttaNet import AttaNetHead,AttaNetOutput,AttaNetHeadMod
+from model.erfnet import ERFNetEncoder, ERFNetDecoder
+from model.AttaNet import AttaNetHead, AttaNetOutput, AttaNetHeadMod
 import numpy as np
 
 validBackbones = ['attanet', 'erfnet', 'effnetv2', 'fast_scnn', 'res18', 'res34', 'res50', 'res101',
@@ -30,9 +30,9 @@ class conv_bn_relu(torch.nn.Module):
 
 
 class parsingNet(torch.nn.Module):
-    def __init__(self, size=(288, 800), pretrained=True, backbone='res50', 
-                cls_dim=(37, 10, 4),fc_mid_chan_num = 128,
-                 use_aux=False, use_spp=False, use_attn=False, 
+    def __init__(self, size=(288, 800), pretrained=True, backbone='res50',
+                 cls_dim=(37, 10, 4), fc_mid_chan_num=128,
+                 use_aux=False, use_spp=False, use_attn=False,
                  use_resa=False, use_sfl_attn=False, use_mid_aux=False):
         super(parsingNet, self).__init__()
 
@@ -77,7 +77,7 @@ class parsingNet(torch.nn.Module):
         elif self.backbone == 'erfnet':
             # input : nchw,
             # output: (w+1) * sample_rows * 4
-            self.model = ERFNetEncoder()
+            self.model = ERFNetEncoder(require_mid_out=self.use_mid_aux)
 
             if self.use_aux:
                 self.aux_combine = torch.nn.Sequential(
@@ -89,9 +89,9 @@ class parsingNet(torch.nn.Module):
             self.interPoolChnNum = 1800*2
 
             self.cls = torch.nn.Sequential(
-                torch.nn.Linear(self.interPoolChnNum, 128),
+                torch.nn.Linear(self.interPoolChnNum, self.fc_mid_chan_num),
                 torch.nn.ReLU(),
-                torch.nn.Linear(128, self.total_dim),
+                torch.nn.Linear(self.fc_mid_chan_num, self.total_dim),
             )
 
             self.pool = torch.nn.Conv2d(128, 1, 1)
@@ -287,23 +287,26 @@ class parsingNet(torch.nn.Module):
 
             return group_cls
         elif self.backbone == 'erfnet':
-            fea = self.model(x)
+            if self.use_mid_aux:
+                x2, x3, x4 = self.model(x)
+            else:
+                x4 = self.model(x)
 
             if self.use_aux:
-                aux_seg = self.aux_combine(fea)
+                aux_seg = self.aux_combine(x4)
             else:
                 aux_seg = None
 
             if self.use_attn:
-                fea = self.selfAttn(fea)[0]
+                fea = self.selfAttn(x4)[0]
 
             if self.use_resa:
-                fea = self.resa(fea)
+                fea = self.resa(x4)
 
             if self.use_sfl_attn:
-                fea = self.sfl_attn(fea)
+                fea = self.sfl_attn(x4)
 
-            fea = self.pool(fea)
+            fea = self.pool(x4)
             mid_fea = fea.view(-1, self.interPoolChnNum)
 
             group_cls = self.cls(mid_fea)
@@ -314,11 +317,11 @@ class parsingNet(torch.nn.Module):
             if self.use_aux:
                 return group_cls, aux_seg
             if self.use_mid_aux:
-                return group_cls, mid_fea
+                return group_cls, x2, x3, x4, fea
 
             return group_cls
         elif self.backbone == 'attanet':
-            x2,fea,x4 = self.model(x)
+            x2, fea, x4 = self.model(x)
 
             if self.use_aux:
                 x2 = self.aux_header2(x2)
@@ -364,10 +367,10 @@ class parsingNet(torch.nn.Module):
                 x3 = self.aux_header3(x3)
                 x3 = torch.nn.functional.interpolate(
                     x3, scale_factor=2, mode='bilinear', align_corners=True)
-                x4 = self.aux_header4(x4)
-                x4 = torch.nn.functional.interpolate(
-                    x4, scale_factor=4, mode='bilinear', align_corners=True)
-                aux_seg = torch.cat([x2, x3, x4], dim=1)
+                fea = self.aux_header4(x4)
+                fea = torch.nn.functional.interpolate(
+                    fea, scale_factor=4, mode='bilinear', align_corners=True)
+                aux_seg = torch.cat([x2, x3, fea], dim=1)
                 aux_seg = self.aux_combine(aux_seg)
             else:
                 aux_seg = None
