@@ -49,7 +49,7 @@ def inference(net1, net2, data_label, use_aux, use_mid_aux, load_name):
 
         return {'cls_out': cls_out, 'cls_label': cls_label,
                 'x2_out_net1': x2_out_net1, 'x3_out_net1': x3_out_net1, 'x4_out_net1': x4_out_net1,
-                'x2_out_net2': x2_out_net2, 'x3_out_net2': x3_out_net2, 'x4_out_net2': x4_out_net2, 'img_name': img_name}
+                'x2_out_net2': x2_out_net2.detach(), 'x3_out_net2': x3_out_net2.detach(), 'x4_out_net2': x4_out_net2.detach(), 'img_name': img_name}
     else:
         img, cls_label = data_label
         img, cls_label = img.cuda(), cls_label.cuda()
