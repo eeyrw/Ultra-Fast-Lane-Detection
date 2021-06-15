@@ -21,6 +21,7 @@ import matplotlib.image as mpimg
 import matplotlib.gridspec as gridspec
 import matplotlib
 import sys
+import math
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -33,7 +34,7 @@ def genPseudoLabelImage(image, segOutput, imageSize, segSize, visualize_path, la
     plainSegOutput = torch.squeeze(torch.nn.functional.interpolate(
         segOutput.float(), size=segSize)).byte().numpy()
     plainSegOutputWithImageSize = torch.squeeze(torch.nn.functional.interpolate(
-        segOutput.float(), size=imageSize)).byte().numpy()        
+        segOutput.float(), size=imageSize)).byte().numpy()
 
     image = torch.unsqueeze(image, dim=0)
     image = torch.squeeze(
@@ -47,6 +48,7 @@ def genPseudoLabelImage(image, segOutput, imageSize, segSize, visualize_path, la
     res = cv2.addWeighted(img_bgr, 1, segImage, 0.7, 0.4)
     cv2.imwrite(visualize_path, res, [int(cv2.IMWRITE_WEBP_QUALITY), 95])
     cv2.imwrite(labelPath, plainSegOutput)
+
 
 def genSegLabelImage(image, segOutput, size, path, use_label=True, use_color=False):
     # segOutput: [class,h,w]
@@ -135,6 +137,57 @@ def normalizeImage(imageTensor):
     return (imageNormalized*255).byte().cpu().numpy()
 
 
+def visualizeTensorList(tensorList, titleList):
+    totalTensorNum = 0
+    for ts in tensorList:
+        tsChannNum = 0
+        tsSize = ts.size()
+        if len(tsSize) > 1:
+            tsChannNum = int(torch.prod(torch.tensor(ts.size())[:-2]))
+        else:
+            tsChannNum = int(ts.size())
+        totalTensorNum = totalTensorNum + tsChannNum
+
+    itmePerLine = int(math.pow(totalTensorNum, 0.5))
+
+    fig2 = plt.figure(constrained_layout=True, figsize=[
+                      itmePerLine*3, itmePerLine*3], dpi=100)
+    spec2 = gridspec.GridSpec(ncols=itmePerLine, nrows=math.ceil(
+        totalTensorNum/itmePerLine), figure=fig2)
+
+    x_cnt = 0
+    y_cnt = 0
+
+    for ts, tsName in zip(tensorList, titleList):
+        tsSize = ts.size()
+        if len(tsSize) > 1:
+            ts = ts.view(-1, tsSize[-2], tsSize[-1])
+        else:
+            ts = ts.view(-1, tsSize)
+        for i, ts2d in enumerate(ts):
+            ax = fig2.add_subplot(spec2[y_cnt, x_cnt])
+            ax.set_title("%s_%d" % (tsName, i))
+            ax.imshow(ts2d,
+                      cmap=plt.cm.rainbow, vmin=0, vmax=1)
+            if x_cnt >= itmePerLine-1:
+                x_cnt = 0
+                y_cnt = y_cnt + 1
+            else:
+                x_cnt = x_cnt + 1
+
+    return fig2
+
+
+def visualizeTensorListToTb(writer, tag, step, tensorList, titleList):
+    fig2 = visualizeTensorList(tensorList, titleList)
+    writer.add_figure(tag, fig2,
+                      global_step=step, close=True, walltime=None)
+
+
+def visualizeTensorListToFile(imgPath, tensorList, titleList):
+    fig2 = visualizeTensorList(tensorList, titleList)
+    fig2.savefig(imgPath)
+
 def visualizeImageAndLabel(self, writer, tag, step, image, label, output):
     maxVal = torch.max(image)
     minVal = torch.min(image)
@@ -167,5 +220,6 @@ def visualizeImageAndLabel(self, writer, tag, step, image, label, output):
 
 
 if __name__ == "__main__":
-    genSegLabelImage(torch.randn(3, 720, 1280), torch.randn(
-        5, 36, 100), (720, 1280), "a.webp", use_color=True)
+    # genSegLabelImage(torch.randn(3, 720, 1280), torch.randn(
+    #     5, 36, 100), (720, 1280), "a.webp", use_color=True)
+    visualizeTensorListToFile('a.png',torch.randn(3,4,10,3),['aaa','bbb','ccc'])
