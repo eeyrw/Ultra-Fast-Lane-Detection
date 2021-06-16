@@ -43,9 +43,11 @@ class SoftmaxFocalLoss(nn.Module):
 
 
 class AttentionMapLoss(nn.Module):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, type='normal', *args, **kwargs):
         super(AttentionMapLoss, self).__init__()
         self.mse = nn.MSELoss()
+        self.bce = torch.nn.BCEWithLogitsLoss()
+        self.type = type
 
     def forward(self, net1_out, net2_out):
         # net1_out ([Batch Size, C, H, W])
@@ -62,7 +64,21 @@ class AttentionMapLoss(nn.Module):
             net2_attn = torch.nn.functional.interpolate(
                 net2_attn.unsqueeze(dim=1), (net1_h, net1_w)).squeeze(dim=1)
 
-        loss = self.mse(net1_attn, net2_attn)
+        if self.type == 'mse':
+            loss = self.mse(net1_attn, net2_attn)
+        elif self.type == 'bce':
+            loss = self.bce(net1_attn, net2_attn)
+        elif self.type == 'gram_matrix':
+            net1_attn = torch.bmm(net1_attn, net1_attn.permute(0, 2, 1))
+            net2_attn = torch.bmm(net2_attn, net2_attn.permute(0, 2, 1))
+            loss = self.bce(net1_attn, net2_attn)
+        elif self.type == 'shrink':
+            net1_attn_w = torch.sum(net1_attn, dim=1)
+            net1_attn_h = torch.sum(net1_attn, dim=2)
+            net2_attn_w = torch.sum(net2_attn, dim=1)
+            net2_attn_h = torch.sum(net2_attn, dim=2)
+            loss = self.bce(net1_attn_w, net2_attn_w) + \
+                self.bce(net1_attn_h, net2_attn_h)
         return loss
 
 
