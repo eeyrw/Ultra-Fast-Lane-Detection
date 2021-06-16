@@ -50,7 +50,7 @@ def get_loss_dict(cfg):
             'name': ['cls_loss', 'relation_loss', 'relation_dis',
                      'x2_attn_loss', 'x3_attn_loss', 'x4_attn_loss'],
             'op': [SoftmaxFocalLoss(2), ParsingRelationLoss(), ParsingRelationDis(),
-                   AttentionMapLoss(), AttentionMapLoss(), AttentionMapLoss()],
+                   AttentionMapLoss(cfg.DISTILL_LOSS_TYPE), AttentionMapLoss(cfg.DISTILL_LOSS_TYPE), AttentionMapLoss(cfg.DISTILL_LOSS_TYPE)],
             'weight': [1.0, cfg.LOSS.SIM_LOSS_W, cfg.LOSS.SHP_LOSS_W,
                        1.0, 1.0, 1.0],
             'data_src': [('cls_out', 'cls_label'), ('cls_out',), ('cls_out',),
