@@ -15,7 +15,7 @@ from utils.metrics import MultiLabelAcc, AccTopk, Metric_mIoU, update_metrics, r
 from utils.common import merge_yacs_config, save_model, save_best_model, cp_projects
 from utils.common import get_work_dir, get_logger
 
-from test_wrapper import testNet
+from test_wrapper import testNet, testRemoveTemps
 from utils.visualize import genSegLabelImage, logSegLabelImage
 from data.constant import tusimple_row_anchor, culane_row_anchor
 
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     args, cfg = merge_yacs_config()
 
-    work_dir = get_work_dir(cfg)
+    work_dir, work_id = get_work_dir(cfg)
 
     distributed = False
     if 'WORLD_SIZE' in os.environ:
@@ -223,7 +223,7 @@ if __name__ == "__main__":
               logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, cls_num_per_lane)
         if cfg.TEST.DURING_TRAIN and (epoch % cfg.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
-                net, args, cfg, True, lastMetrics=bestMetrics)
+                net, args, cfg, True,  work_id=work_id, lastMetrics=bestMetrics)
             sampleIterAfterEpoch = (epoch+1) * \
                 len(train_loader) * cfg.TRAIN.BATCH_SIZE
             for metricName, metricValue in metricsDict.items():
@@ -235,3 +235,4 @@ if __name__ == "__main__":
                 dist_print('Save best model: epoch %d' % epoch)
         # save_model(net, optimizer, epoch, work_dir, distributed)
     logger.close()
+    testRemoveTemps(cfg, work_id)

@@ -14,7 +14,7 @@ from utils.metrics import MultiLabelAcc, AccTopk, Metric_mIoU, update_metrics, r
 from utils.common import merge_yacs_config, save_model, save_best_model, cp_projects
 from utils.common import get_work_dir, get_logger
 
-from test_wrapper import testNet
+from test_wrapper import testNet, testRemoveTemps
 from utils.visualize import genSegLabelImage, logSegLabelImage
 from data.constant import tusimple_row_anchor, culane_row_anchor
 from generate_pseudo_gt import genPseudoGt
@@ -138,7 +138,7 @@ def train(net, data_loader, loss_dict, optimizer, scheduler, logger, epoch, metr
         t_data_0 = time.time()
 
 
-def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestMetrics, resume_epoch, trainIdentider, paramSet='TRAIN'):
+def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestMetrics, resume_epoch, trainIdentider, work_id, paramSet='TRAIN'):
     for epoch in range(resume_epoch, cfg[paramSet]['EPOCH']):
         train(net, train_loader, loss_dict, optimizer, scheduler,
               logger, epoch, metric_dict, cfg.NETWORK.USE_AUX, cfg, trainIdentider)
@@ -148,7 +148,7 @@ def train_proc(net, optimizer, scheduler, train_loader, args, cfg, logger, bestM
 
         if cfg.TEST.DURING_TRAIN and (epoch % cfg.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
-                net, args, cfg, True, lastMetrics=bestMetrics)
+                net, args, cfg, True, work_id=work_id, lastMetrics=bestMetrics)
 
             if metricsDict is not None:
                 for metricName, metricValue in metricsDict.items():
@@ -240,7 +240,7 @@ if __name__ == "__main__":
 
     args, cfg = merge_yacs_config()
 
-    work_dir = get_work_dir(cfg)
+    work_dir, work_id = get_work_dir(cfg)
     currentDateTime = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
     distributed = False
@@ -289,7 +289,7 @@ if __name__ == "__main__":
             'TRAIN', net_teacher, annotated_loader, cfg)
         bestMetrics, _ = train_proc(net_teacher, optmzr, scdulr, annotated_loader,
                                     args, cfg, logger, bestMetrics, resume_epoch,
-                                    '0_S0', paramSet='TRAIN')
+                                    '0_S0', work_id, paramSet='TRAIN')
 
     if bestMetrics is not None:
         for metricName, metricValue in bestMetrics.items():
@@ -317,7 +317,7 @@ if __name__ == "__main__":
                 'TRAIN_PSEUDO', net_student, pseudo_annotated_loader, cfg)
             bestMetrics, _ = train_proc(net_student, optmzr, scdulr, pseudo_annotated_loader,
                                         args, cfg, logger, bestMetrics, resume_epoch,
-                                        '%d_S2' % grandIterNum, paramSet='TRAIN_PSEUDO')
+                                        '%d_S2' % grandIterNum, work_id, paramSet='TRAIN_PSEUDO')
 
         if 3 in cfg.SEMI_SPVSR.INCLUE_STEPS:
             # Step3: Finetune student network with mannually annotated sample
@@ -328,7 +328,7 @@ if __name__ == "__main__":
                 'TRAIN_FINETUNE', net_student, annotated_loader, cfg)
             bestMetrics, _ = train_proc(net_student, optmzr, scdulr, annotated_loader,
                                         args, cfg, logger, bestMetrics, resume_epoch,
-                                        '%d_S3' % grandIterNum, paramSet='TRAIN_FINETUNE')
+                                        '%d_S3' % grandIterNum, work_id, paramSet='TRAIN_FINETUNE')
             net_student = net_student.cpu()
 
         if bestMetrics is not None:
@@ -349,3 +349,4 @@ if __name__ == "__main__":
             else:
                 raise RuntimeError('Wrong STEP 4 scheme!!')
     logger.close()
+    testRemoveTemps(cfg, work_id)

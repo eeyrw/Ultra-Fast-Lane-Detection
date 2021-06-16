@@ -46,7 +46,7 @@ class AttentionMapLoss(nn.Module):
     def __init__(self, type='normal', *args, **kwargs):
         super(AttentionMapLoss, self).__init__()
         self.mse = nn.MSELoss()
-        self.bce = torch.nn.BCEWithLogitsLoss()
+        self.bce = torch.nn.BCELoss()
         self.type = type
 
     def forward(self, net1_out, net2_out):
@@ -69,16 +69,18 @@ class AttentionMapLoss(nn.Module):
         elif self.type == 'bce':
             loss = self.bce(net1_attn, net2_attn)
         elif self.type == 'gram_matrix':
-            net1_attn = torch.bmm(net1_attn, net1_attn.permute(0, 2, 1))
-            net2_attn = torch.bmm(net2_attn, net2_attn.permute(0, 2, 1))
-            loss = self.bce(net1_attn, net2_attn)
+            _, h1, _ = net1_attn.size()
+            _, h2, _ = net2_attn.size()
+            net1_attn = torch.bmm(net1_attn, net1_attn.permute(0, 2, 1))/h1
+            net2_attn = torch.bmm(net2_attn, net2_attn.permute(0, 2, 1))/h2
+            loss = self.mse(net1_attn, net2_attn)
         elif self.type == 'shrink':
-            net1_attn_w = torch.sum(net1_attn, dim=1)
-            net1_attn_h = torch.sum(net1_attn, dim=2)
-            net2_attn_w = torch.sum(net2_attn, dim=1)
-            net2_attn_h = torch.sum(net2_attn, dim=2)
-            loss = self.bce(net1_attn_w, net2_attn_w) + \
-                self.bce(net1_attn_h, net2_attn_h)
+            net1_attn_w = torch.mean(net1_attn, dim=1)
+            net1_attn_h = torch.mean(net1_attn, dim=2)
+            net2_attn_w = torch.mean(net2_attn, dim=1)
+            net2_attn_h = torch.mean(net2_attn, dim=2)
+            loss = self.mse(net1_attn_w, net2_attn_w) + \
+                self.mse(net1_attn_h, net2_attn_h)
         return loss
 
 
@@ -121,7 +123,7 @@ class ParsingRelationDis(nn.Module):
 
 
 if __name__ == "__main__":
-    attnLoss = AttentionMapLoss()
+    attnLoss = AttentionMapLoss('shrink')
     net1_out = torch.randn(1, 1, 40, 120)
     net2_out = torch.randn(1, 1, 36, 100)
     loss = attnLoss(net1_out, net2_out)

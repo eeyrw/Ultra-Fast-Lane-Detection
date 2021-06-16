@@ -15,7 +15,7 @@ from utils.metrics import MultiLabelAcc, AccTopk, Metric_mIoU, update_metrics, r
 from utils.common import merge_yacs_config, save_model, save_best_model, cp_projects
 from utils.common import get_work_dir, get_logger
 
-from test_wrapper import testNet
+from test_wrapper import testNet, testRemoveTemps
 from utils.visualize import genSegLabelImage, logSegLabelImage
 from data.constant import tusimple_row_anchor, culane_row_anchor
 from generate_pseudo_gt import genPseudoGt
@@ -219,7 +219,7 @@ if __name__ == "__main__":
                       'EXP.RESUME', r'../log/20210613_210527_lr_1e-01_b_60cl_use_res50/best.pth']
     )
 
-    work_dir = get_work_dir(cfg_student)
+    work_dir, work_id = get_work_dir(cfg_student)
     currentDateTime = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
     distributed = False
@@ -276,7 +276,7 @@ if __name__ == "__main__":
               logger, epoch, metric_dict, cfg_student)
         if cfg_student.TEST.DURING_TRAIN and (epoch % cfg_student.TEST.INTERVAL == 0):
             metricsDict, isBetter = testNet(
-                net_student, args_student, cfg_student, False, lastMetrics=bestMetrics)
+                net_student, args_student, cfg_student, False, work_id=work_id, lastMetrics=bestMetrics)
             sampleIterAfterEpoch = (epoch+1) * \
                 len(train_loader) * cfg_student.TRAIN.BATCH_SIZE
             for metricName, metricValue in metricsDict.items():
@@ -288,3 +288,4 @@ if __name__ == "__main__":
                 dist_print('Save best model: epoch %d' % epoch)
         # save_model(net, optimizer, epoch, work_dir, distributed)
     logger.close()
+    testRemoveTemps(cfg_student, work_id)
